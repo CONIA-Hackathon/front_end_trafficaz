@@ -3,54 +3,131 @@ import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platfo
 import { useRouter } from 'expo-router';
 import Button from '../../components/Button';
 import InputField from '../../components/InputField';
+import PhoneInput from '../../components/PhoneInput';
 import colors from '../../constants/colors';
+import { register, sendOtp } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
+    name: '',
     phoneNumber: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { setPhoneNumberForOtp, setDevelopmentOtpCode } = useAuth();
+  const { language, t, loading: languageLoading } = useLanguage();
+
+  // Debug: Log current language state
+  console.log('Current language in register screen:', language);
+  console.log('Language loading:', languageLoading);
 
   const validateForm = () => {
     const newErrors = {};
 
-    // Phone number validation
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = t('nameRequired');
+    }
+
+    // Phone number validation (now includes +237 prefix)
     if (!formData.phoneNumber) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^\d{10,15}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid phone number';
+      newErrors.phoneNumber = t('phoneRequired');
+    } else if (!/^\+237\d{9}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = t('validPhone');
     }
 
     // Email validation (optional but if provided, must be valid)
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('validEmail');
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('passwordRequired');
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = t('passwordLength');
     }
 
     // Confirm password validation
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('passwordsDontMatch');
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleRegister = () => {
-    if (validateForm()) {
-      // TODO: Call register API
-      console.log('Registering with:', formData);
-      router.push('/auth/otp');
+  const handleRegister = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      // Debug: Log the language being sent
+      console.log('Selected language for registration:', language);
+      
+      // Register the user with fallback to 'en' if language is not set
+      const registerResponse = await register({
+        name: formData.name,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        password: formData.password,
+        language: language || 'en' // Include the selected language with fallback
+      });
+
+      console.log('=== REGISTRATION SUCCESS ===');
+      console.log('Full registration response:', registerResponse);
+      console.log('Registration data sent:', {
+        name: formData.name,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        password: '***hidden***',
+        language: language || 'en'
+      });
+
+      // Store phone number in context for OTP screen
+      setPhoneNumberForOtp(formData.phoneNumber);
+
+      // Extract OTP from registration response for development
+      const otpCode = registerResponse.data?.otpCode;
+      console.log('=== OTP EXTRACTION ===');
+      console.log('OTP Code found:', otpCode);
+      console.log('OTP Expires at:', registerResponse.data?.expiresAt);
+      
+      if (otpCode) {
+        console.log('Development OTP Code:', otpCode);
+        console.log('Storing OTP in context...');
+        setDevelopmentOtpCode(otpCode);
+        console.log('OTP stored successfully, navigating to OTP screen...');
+        // Navigate to OTP screen
+        router.push('/auth/otp');
+      } else {
+        console.log('No OTP in response, falling back to sendOtp...');
+        // Fallback: Send OTP after successful registration
+        const otpResponse = await sendOtp(formData.phoneNumber);
+        console.log('OTP sent:', otpResponse);
+        
+        // Extract OTP from sendOtp response
+        const sendOtpCode = otpResponse.data?.otpCode;
+        if (sendOtpCode) {
+          console.log('Development OTP from sendOtp:', sendOtpCode);
+          console.log('Storing OTP in context...');
+          setDevelopmentOtpCode(sendOtpCode);
+          console.log('OTP stored successfully, navigating to OTP screen...');
+        }
+        
+        router.push('/auth/otp');
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      Alert.alert('Registration Failed', error.message || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,19 +151,27 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join TrafficAZ for real-time traffic alerts</Text>
+        <Text style={styles.title}>{t('createAccount')}</Text>
+        <Text style={styles.subtitle}>{t('joinTrafficAZ')}</Text>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number *</Text>
+            <Text style={styles.label}>Full Name *</Text>
             <InputField
-              icon="call"
-              placeholder="Enter your phone number"
+              icon="person"
+              placeholder="Enter your full name"
+              value={formData.name}
+              onChangeText={(value) => updateFormData('name', value)}
+              error={!!errors.name}
+            />
+            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phone Number *</Text>
+            <PhoneInput
               value={formData.phoneNumber}
               onChangeText={(value) => updateFormData('phoneNumber', value)}
-              keyboardType="phone-pad"
-              maxLength={15}
               error={!!errors.phoneNumber}
             />
             {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
@@ -133,12 +218,17 @@ export default function RegisterScreen() {
             {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
           </View>
 
-          <Button title="Register" onPress={handleRegister} style={styles.button} />
+          <Button 
+            title={loading ? t('creatingAccount') : t('register')} 
+            onPress={handleRegister} 
+            style={styles.button}
+            disabled={loading}
+          />
           
           <View style={styles.loginLink}>
-            <Text style={styles.loginText}>Already have an account? </Text>
+            <Text style={styles.loginText}>{t('alreadyHaveAccount')} </Text>
             <Text style={styles.linkText} onPress={() => router.push('/auth/login')}>
-              Login here
+              {t('loginHere')}
             </Text>
           </View>
         </View>
