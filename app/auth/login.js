@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/Button';
 import InputField from '../../components/InputField';
+import PhoneInput from '../../components/PhoneInput';
 import colors from '../../constants/colors';
 import { login, sendOtp } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function LoginScreen() {
   const [formData, setFormData] = useState({
@@ -16,20 +19,21 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setPhoneNumberForOtp } = useAuth();
+  const { t } = useLanguage();
 
   const validateForm = () => {
     const newErrors = {};
 
-    // Phone number validation
+    // Phone number validation (now includes +237 prefix)
     if (!formData.phoneNumber) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^\d{10,15}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid phone number';
+      newErrors.phoneNumber = t('phoneRequired');
+    } else if (!/^\+237\d{9}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = t('validPhone');
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('passwordRequired');
     }
 
     setErrors(newErrors);
@@ -82,50 +86,69 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to your TrafficAZ account</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number</Text>
-            <InputField
-              icon="call"
-              placeholder="Enter your phone number"
-              value={formData.phoneNumber}
-              onChangeText={(value) => updateFormData('phoneNumber', value)}
-              keyboardType="phone-pad"
-              maxLength={15}
-              error={!!errors.phoneNumber}
-            />
-            {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
+        {/* Main Content */}
+        <View style={styles.mainContent}>
+          {/* Icon */}
+          <View style={styles.iconContainer}>
+            <View style={styles.iconBackground}>
+              <Ionicons name="person-circle" size={50} color={colors.primary} />
+            </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <InputField
-              icon="lock-closed"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChangeText={(value) => updateFormData('password', value)}
-              secureTextEntry
-              maxLength={50}
-              error={!!errors.password}
-            />
-            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-          </View>
+          <Text style={styles.title}>{t('welcomeBack')}</Text>
+          <Text style={styles.subtitle}>{t('signInToAccount')}</Text>
 
-          <Button 
-            title={loading ? "Signing In..." : "Login"} 
-            onPress={handleLogin} 
-            style={styles.button}
-            disabled={loading}
-          />
-          
-          <View style={styles.registerLink}>
-            <Text style={styles.registerText}>Don't have an account? </Text>
-            <Text style={styles.linkText} onPress={() => router.push('/auth/register')}>
-              Register here
-            </Text>
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t('phoneNumber')}</Text>
+              <PhoneInput
+                value={formData.phoneNumber}
+                onChangeText={(value) => updateFormData('phoneNumber', value)}
+                error={!!errors.phoneNumber}
+              />
+              {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t('password')}</Text>
+              <InputField
+                icon="lock-closed"
+                placeholder={t('password')}
+                value={formData.password}
+                onChangeText={(value) => updateFormData('password', value)}
+                secureTextEntry
+                maxLength={50}
+                error={errors.password}
+              />
+            </View>
+
+            <Button 
+              title={t('login')} 
+              onPress={handleLogin} 
+              style={styles.loginButton}
+              loading={loading}
+              disabled={loading}
+              icon="log-in"
+              iconPosition="right"
+              size="large"
+            />
+            
+            <View style={styles.registerLink}>
+              <Text style={styles.registerText}>{t('dontHaveAccount')} </Text>
+              <TouchableOpacity onPress={() => router.push('/auth/register')}>
+                <Text style={styles.linkText}>{t('registerHere')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -142,28 +165,68 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 24,
-    paddingTop: 40,
+    flexGrow: 1,
+    paddingHorizontal: 24,
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingBottom: 40,
   },
+  iconContainer: {
+    marginBottom: 32,
+  },
+  iconBackground: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 12,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
+    lineHeight: 24,
   },
   form: {
     width: '100%',
+    maxWidth: 400,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
@@ -171,18 +234,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: 8,
   },
-  errorText: {
-    color: colors.danger,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  button: {
+  loginButton: {
     marginTop: 16,
+    marginBottom: 32,
   },
   registerLink: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    alignItems: 'center',
   },
   registerText: {
     fontSize: 16,
@@ -192,5 +251,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.primary,
     fontWeight: '600',
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: 12,
+    marginTop: 4,
   },
 }); 

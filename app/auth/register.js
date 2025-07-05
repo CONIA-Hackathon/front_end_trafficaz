@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platfo
 import { useRouter } from 'expo-router';
 import Button from '../../components/Button';
 import InputField from '../../components/InputField';
+import PhoneInput from '../../components/PhoneInput';
 import colors from '../../constants/colors';
 import { register, sendOtp } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
@@ -34,10 +35,10 @@ export default function RegisterScreen() {
       newErrors.name = t('nameRequired');
     }
 
-    // Phone number validation
+    // Phone number validation (now includes +237 prefix)
     if (!formData.phoneNumber) {
       newErrors.phoneNumber = t('phoneRequired');
-    } else if (!/^\d{10,15}$/.test(formData.phoneNumber)) {
+    } else if (!/^\+237\d{9}$/.test(formData.phoneNumber)) {
       newErrors.phoneNumber = t('validPhone');
     }
 
@@ -168,13 +169,9 @@ export default function RegisterScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone Number *</Text>
-            <InputField
-              icon="call"
-              placeholder="Enter your phone number"
+            <PhoneInput
               value={formData.phoneNumber}
               onChangeText={(value) => updateFormData('phoneNumber', value)}
-              keyboardType="phone-pad"
-              maxLength={15}
               error={!!errors.phoneNumber}
             />
             {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}

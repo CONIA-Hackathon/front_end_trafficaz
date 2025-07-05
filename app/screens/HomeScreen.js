@@ -8,9 +8,11 @@ import AlertCard from '../../components/AlertCard';
 import Toggle from '../../components/Toggle';
 import colors from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const HomeScreen = () => {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
+  const { t } = useLanguage();
   
   const sampleAlert = {
     title: 'Heavy Traffic Ahead',
@@ -18,13 +20,17 @@ const HomeScreen = () => {
     time:'2:30pm'
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      // Navigation will be handled by the index screen
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+  // Handle long names by truncating if needed
+  const getDisplayName = (name) => {
+    if (!name) return 'User';
+    return name.length > 20 ? name.substring(0, 20) + '...' : name;
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   };
 
   return (
@@ -36,34 +42,125 @@ const HomeScreen = () => {
             <Text style={styles.traffic}>Traffic</Text>
             <Text style={styles.az}>AZ</Text>
           </Text>
-          <Text style={styles.subtitle}>Real-time traffic alerts</Text>
+          <Text style={styles.subtitle}>{t('realTimeAlerts')}</Text>
         </View>
         <View style={styles.headerRight}>
           <Toggle />
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
       </View>
 
       {/* Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Welcome Section */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>
-            Welcome back, {user?.name || 'User'}!
-          </Text>
+          <View style={styles.welcomeContent}>
+            <View style={styles.welcomeIcon}>
+              <Ionicons name="sunny" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.welcomeText}>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.userName}>{getDisplayName(user?.name)}</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.alertArea}>
-          <Text style={styles.sectionTitle}>Latest Traffic Alert:</Text>
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <View style={styles.statIcon}>
+              <Ionicons name="car" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statNumber}>12</Text>
+              <Text style={styles.statLabel}>Active Routes</Text>
+            </View>
+          </View>
+          
+          <View style={styles.statCard}>
+            <View style={styles.statIcon}>
+              <Ionicons name="alert-circle" size={20} color={colors.warning} />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statLabel}>Alerts Today</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Latest Alert */}
+        <View style={styles.alertSection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="notifications" size={20} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>{t('latestTrafficAlert')}</Text>
+          </View>
           <AlertCard alert={sampleAlert} />
         </View>
 
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        {/* Quick Actions */}
+        <View style={styles.actionsSection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="flash" size={20} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
+          </View>
+          
           <View style={styles.actionButtons}>
-            <Button title="Report Traffic" onPress={() => {}} style={styles.actionButton} />
-            <Button title="View Map" onPress={() => {}} style={styles.actionButton} />
+            <TouchableOpacity style={styles.actionCard}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="add-circle" size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.actionText}>{t('reportTraffic')}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="map" size={24} color={colors.info} />
+              </View>
+              <Text style={styles.actionText}>{t('viewMap')}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="settings" size={24} color={colors.secondary} />
+              </View>
+              <Text style={styles.actionText}>Settings</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="help-circle" size={24} color={colors.warning} />
+              </View>
+              <Text style={styles.actionText}>Help</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Recent Activity */}
+        <View style={styles.activitySection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time" size={20} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+          </View>
+          
+          <View style={styles.activityList}>
+            <View style={styles.activityItem}>
+              <View style={styles.activityIcon}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              </View>
+              <View style={styles.activityContent}>
+                <Text style={styles.activityText}>Route saved successfully</Text>
+                <Text style={styles.activityTime}>2 minutes ago</Text>
+              </View>
+            </View>
+            
+            <View style={styles.activityItem}>
+              <View style={styles.activityIcon}>
+                <Ionicons name="alert" size={16} color={colors.warning} />
+              </View>
+              <View style={styles.activityContent}>
+                <Text style={styles.activityText}>Traffic alert received</Text>
+                <Text style={styles.activityTime}>15 minutes ago</Text>
+              </View>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -95,7 +192,6 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   title: {
     fontSize: 24,
@@ -112,9 +208,6 @@ const styles = StyleSheet.create({
   az: {
     color: colors.textPrimary,
   },
-  logoutButton: {
-    padding: 8,
-  },
   content: {
     flex: 1,
     padding: 20,
@@ -122,39 +215,169 @@ const styles = StyleSheet.create({
   welcomeSection: {
     marginBottom: 24,
   },
+  welcomeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  welcomeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
   welcomeText: {
-    fontSize: 18,
-    fontWeight: '600',
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: colors.textPrimary,
   },
-  alertArea: {
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
     backgroundColor: colors.white,
     padding: 16,
     borderRadius: 12,
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  statContent: {
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  alertSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    fontWeight: '600',
     color: colors.textPrimary,
+    marginLeft: 8,
   },
-  quickActions: {
+  actionsSection: {
     marginBottom: 24,
   },
   actionButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
-  actionButton: {
-    marginBottom: 0,
+  actionCard: {
+    width: '48%',
+    backgroundColor: colors.white,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  activitySection: {
+    marginBottom: 24,
+  },
+  activityList: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  activityIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.success + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });
 

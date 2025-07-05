@@ -47,7 +47,7 @@ const translations = {
     // Validation
     nameRequired: 'Name is required',
     phoneRequired: 'Phone number is required',
-    validPhone: 'Please enter a valid phone number',
+    validPhone: 'Please enter a valid 9-digit phone number',
     validEmail: 'Please enter a valid email address',
     passwordRequired: 'Password is required',
     passwordLength: 'Password must be at least 6 characters',
@@ -62,7 +62,7 @@ const translations = {
     // Home
     welcomeBackUser: 'Welcome back, {name}!',
     realTimeAlerts: 'Real-time traffic alerts',
-    latestTrafficAlert: 'Latest Traffic Alert:',
+    latestTrafficAlert: 'Latest Traffic Alert',
     quickActions: 'Quick Actions',
     reportTraffic: 'Report Traffic',
     viewMap: 'View Map',
@@ -105,7 +105,7 @@ const translations = {
     // Validation
     nameRequired: 'Le nom est requis',
     phoneRequired: 'Le numéro de téléphone est requis',
-    validPhone: 'Veuillez entrer un numéro de téléphone valide',
+    validPhone: 'Veuillez entrer un numéro de téléphone à 9 chiffres valide',
     validEmail: 'Veuillez entrer une adresse email valide',
     passwordRequired: 'Le mot de passe est requis',
     passwordLength: 'Le mot de passe doit contenir au moins 6 caractères',
@@ -120,7 +120,7 @@ const translations = {
     // Home
     welcomeBackUser: 'Bon retour, {name}!',
     realTimeAlerts: 'Alertes de trafic en temps réel',
-    latestTrafficAlert: 'Dernière Alerte de Trafic:',
+    latestTrafficAlert: 'Dernière Alerte de Trafic',
     quickActions: 'Actions Rapides',
     reportTraffic: 'Signaler le Trafic',
     viewMap: 'Voir la Carte',
