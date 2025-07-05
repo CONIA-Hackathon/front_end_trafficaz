@@ -124,7 +124,7 @@ const HomeScreen = () => {
             <TouchableOpacity style={styles.actionCard}>
               <View style={styles.actionIcon}>
                 <Ionicons name="settings" size={24} color={colors.secondary} />
-              </View>
+    </View>
               <Text style={styles.actionText}>Settings</Text>
             </TouchableOpacity>
             

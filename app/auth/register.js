@@ -231,7 +231,7 @@ export default function RegisterScreen() {
               {t('loginHere')}
             </Text>
           </View>
-        </View>
+    </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

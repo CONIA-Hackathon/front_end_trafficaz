@@ -254,7 +254,7 @@ export default function OtpScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+    </View>
     </KeyboardAvoidingView>
   );
 }

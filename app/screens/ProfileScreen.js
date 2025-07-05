@@ -154,7 +154,7 @@ const ProfileScreen = () => {
         {/* App Version */}
         <View style={styles.versionContainer}>
           <Text style={styles.versionText}>TrafficAZ v1.0.0</Text>
-        </View>
+    </View>
       </ScrollView>
 
       {/* Bottom Navigation */}
