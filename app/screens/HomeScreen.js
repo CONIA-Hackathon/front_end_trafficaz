@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import BottomNav from '../../components/BottomNav';
 import Button from '../../components/Button';
 import AlertCard from '../../components/AlertCard';
 import Toggle from '../../components/Toggle';
@@ -34,7 +33,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -50,7 +49,11 @@ const HomeScreen = () => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <View style={styles.welcomeContent}>
@@ -164,9 +167,6 @@ const HomeScreen = () => {
           </View>
         </View>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <BottomNav />
     </SafeAreaView>
   );
 };
@@ -198,19 +198,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   traffic: {
     color: colors.primary,
   },
   az: {
     color: colors.textPrimary,
   },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 100, // Add extra padding for bottom navigation
   },
   welcomeSection: {
     marginBottom: 24,

@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../context/AuthContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import BottomNav from '../components/BottomNav';
+import colors from '../constants/colors';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -24,6 +26,14 @@ export default function RootLayout() {
   const showBottomNav = !hideBottomNavOn.includes(pathname);
 
   useEffect(() => {
+    // Configure status bar
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor(colors.primary);
+      StatusBar.setBarStyle('light-content');
+    } else {
+      StatusBar.setBarStyle('dark-content');
+    }
+
     // Hide splash screen after a short delay
     const hideSplash = async () => {
       await SplashScreen.hideAsync();
@@ -34,21 +44,34 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <View style={styles.container}>
-          <Stack screenOptions={{ headerShown: false }}>
-            {/* Let expo-router handle the routing automatically */}
-          </Stack>
-          {showBottomNav && <BottomNav />}
-        </View>
-      </AuthProvider>
-    </LanguageProvider>
+    <SafeAreaProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <View style={styles.container}>
+            <StatusBar 
+              backgroundColor={colors.primary}
+              barStyle="light-content"
+              translucent={false}
+            />
+            <Stack 
+              screenOptions={{ 
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background }
+              }}
+            >
+              {/* Let expo-router handle the routing automatically */}
+            </Stack>
+            {showBottomNav && <BottomNav />}
+          </View>
+        </AuthProvider>
+      </LanguageProvider>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
 });

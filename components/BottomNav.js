@@ -1,11 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
+import colors from '../constants/colors';
+import { navigationConfig } from '../utils/navigationConfig';
 
 const BottomNav = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   const tabs = [
     { label: 'Home', icon: 'home-outline', path: '/Home' },
@@ -14,8 +18,22 @@ const BottomNav = () => {
     { label: 'Me', icon: 'person-outline', path: '/Profile' }
   ];
 
+  // Calculate dynamic height based on device
+  const dynamicHeight = Math.max(60, 60 + insets.bottom);
+  const dynamicPaddingBottom = Math.max(insets.bottom, 10);
+
   return (
-    <View style={styles.navBar}>
+    <View style={[
+      styles.navBar,
+      {
+        height: dynamicHeight,
+        paddingBottom: dynamicPaddingBottom,
+        backgroundColor: navigationConfig.bottomNav.backgroundColor,
+        elevation: navigationConfig.bottomNav.elevation,
+        shadowOpacity: navigationConfig.bottomNav.shadowOpacity,
+        shadowRadius: navigationConfig.bottomNav.shadowRadius,
+      }
+    ]}>
       {tabs.map((tab, index) => {
         const isActive = pathname === tab.path;
 
@@ -24,13 +42,22 @@ const BottomNav = () => {
             key={index}
             onPress={() => router.push(tab.path)}
             style={[styles.tabItem, isActive && styles.activeTab]}
+            activeOpacity={0.7}
           >
-            <Icon
-              name={tab.icon}
-              size={24}
-              color={isActive ? '#4cc9f0' : '#fff'}
-            />
-            <Text style={[styles.tabLabel, isActive && styles.activeLabel]}>
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name={isActive ? tab.icon.replace('-outline', '') : tab.icon}
+                size={24}
+                color={isActive ? navigationConfig.bottomNav.activeColor : navigationConfig.bottomNav.inactiveColor}
+              />
+            </View>
+            <Text style={[
+              styles.tabLabel, 
+              {
+                color: isActive ? navigationConfig.bottomNav.activeColor : navigationConfig.bottomNav.inactiveColor,
+              },
+              isActive && styles.activeLabel
+            ]}>
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -44,34 +71,47 @@ const styles = StyleSheet.create({
   navBar: {
     position: 'absolute',
     bottom: 0,
-    width: Dimensions.get('window').width,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    backgroundColor: '#FF3951',
-    paddingVertical: 10,
+    paddingTop: 8,
+    paddingHorizontal: 16,
     justifyContent: 'space-around',
-    borderTopWidth: 0,
-    elevation: 10,
-    zIndex: 100,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.primary + '20',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    zIndex: 1000,
   },
   tabItem: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingTop: 6,
-    paddingBottom: 2,
-    borderTopWidth: 2,
-    borderTopColor: 'transparent'
+    justifyContent: 'center',
+    paddingVertical: 4,
+    minHeight: 44, // Minimum touch target size for accessibility
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+    width: 32,
+    height: 32,
   },
   activeTab: {
-    borderTopColor: '#4cc9f0'
+    // Active state styling
   },
   tabLabel: {
-    fontSize: 12,
-    color: '#fff',
-    marginTop: 4
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   activeLabel: {
-    fontWeight: 'bold',
-    color: '#4cc9f0'
+    fontWeight: '600',
   }
 });
 
