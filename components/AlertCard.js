@@ -1,33 +1,59 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet,Image } from 'react-native';
 import colors from '../constants/colors';
 
 const AlertCard = ({ alert }) => (
   <View style={styles.card}>
-    <Text style={styles.title}>{alert.title}</Text>
-    <Text style={styles.description}>{alert.description}</Text>
+    <Image source={{ uri: alert.image }} style={styles.image} />
+    
+    <View style={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{alert.title}</Text>
+        <Text style={styles.time}>{alert.time}</Text>
+      </View>
+      <Text style={styles.description}>{alert.description}</Text>
+    </View>
   </View>
 );
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.alertBackground,
-    borderColor: colors.alertBorder,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 16,
-    marginVertical: 8,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 6,
+    elevation: 2,
+    alignItems: 'center',
+    gap: 10
+  },
+  image: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#eee'
+  },
+  content: {
+    flex: 1
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline'
   },
   title: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 4,
-    color: colors.alertText,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333'
+  },
+  time: {
+    fontSize: 12,
+    color: '#888'
   },
   description: {
+    marginTop: 4,
     fontSize: 14,
-    color: colors.alertText,
-  },
+    color: '#555'
+  }
 });
 
-export default AlertCard; 
+export default AlertCard;
