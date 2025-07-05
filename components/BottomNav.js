@@ -1,16 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Link, usePathname } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 
 const BottomNav = () => {
+  const router = useRouter();
   const pathname = usePathname();
 
   const tabs = [
-    { label: 'Home', icon: 'home-outline', path: '/' },
-    { label: 'Map', icon: 'map-outline', path: '/map' },
-    { label: 'Alerts', icon: 'notifications-outline', path: '/notifications' },
-    { label: 'Me', icon: 'person-outline', path: '/profile' }
+    { label: 'Home', icon: 'home-outline', path: '/Home' },
+    { label: 'Map', icon: 'map-outline', path: '/Map' },
+    { label: 'Alerts', icon: 'notifications-outline', path: '/Alert' },
+    { label: 'Me', icon: 'person-outline', path: '/Profile' }
   ];
 
   return (
@@ -19,18 +20,20 @@ const BottomNav = () => {
         const isActive = pathname === tab.path;
 
         return (
-          <Link key={index} href={tab.path} asChild>
-            <View style={[styles.tabItem, isActive && styles.activeTab]}>
-              <Icon
-                name={tab.icon}
-                size={24}
-                color={isActive ? '#4cc9f0' : '#fff'}
-              />
-              <Text style={[styles.tabLabel, isActive && styles.activeLabel]}>
-                {tab.label}
-              </Text>
-            </View>
-          </Link>
+          <TouchableOpacity
+            key={index}
+            onPress={() => router.push(tab.path)}
+            style={[styles.tabItem, isActive && styles.activeTab]}
+          >
+            <Icon
+              name={tab.icon}
+              size={24}
+              color={isActive ? '#4cc9f0' : '#fff'}
+            />
+            <Text style={[styles.tabLabel, isActive && styles.activeLabel]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -47,9 +50,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     justifyContent: 'space-around',
     borderTopWidth: 0,
-    borderColor: '#2e3a80',
     elevation: 10,
-    zIndex: 100
+    zIndex: 100,
   },
   tabItem: {
     alignItems: 'center',
@@ -60,7 +62,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'transparent'
   },
   activeTab: {
-    borderTopColor: '#4cc9f0' // Light cyan indicator
+    borderTopColor: '#4cc9f0'
   },
   tabLabel: {
     fontSize: 12,
