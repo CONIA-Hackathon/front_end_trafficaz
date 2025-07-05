@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import colors from '../constants/colors';
 
 const AlertCard = ({ alert }) => (
   <View style={styles.card}>
@@ -10,8 +11,8 @@ const AlertCard = ({ alert }) => (
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff3cd',
-    borderColor: '#ffeeba',
+    backgroundColor: colors.alertBackground,
+    borderColor: colors.alertBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 16,
@@ -21,9 +22,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
     marginBottom: 4,
+    color: colors.alertText,
   },
   description: {
     fontSize: 14,
+    color: colors.alertText,
   },
 });
 

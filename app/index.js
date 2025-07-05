@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import colors from '../constants/colors';
 
 const languages = [
   { label: 'English', value: 'en' },
@@ -36,16 +37,58 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#f8f9fa' },
+  container: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 24, 
+    backgroundColor: colors.background 
+  },
   gif: { width: 200, height: 200, marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#555', marginBottom: 24, textAlign: 'center' },
-  label: { fontSize: 16, marginBottom: 8 },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    marginBottom: 8,
+    color: colors.textPrimary
+  },
+  subtitle: { 
+    fontSize: 16, 
+    color: colors.textSecondary, 
+    marginBottom: 24, 
+    textAlign: 'center' 
+  },
+  label: { 
+    fontSize: 16, 
+    marginBottom: 8,
+    color: colors.textPrimary
+  },
   dropdownContainer: { flexDirection: 'row', marginBottom: 24 },
-  dropdownItem: { padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 5, marginHorizontal: 8, backgroundColor: '#fff' },
-  selectedDropdownItem: { borderColor: '#007bff', backgroundColor: '#e6f0ff' },
-  dropdownText: { fontSize: 16 },
-  button: { backgroundColor: '#007bff', paddingVertical: 12, paddingHorizontal: 32, borderRadius: 5 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  dropdownItem: { 
+    padding: 10, 
+    borderWidth: 1, 
+    borderColor: colors.border, 
+    borderRadius: 5, 
+    marginHorizontal: 8, 
+    backgroundColor: colors.white 
+  },
+  selectedDropdownItem: { 
+    borderColor: colors.primary, 
+    backgroundColor: colors.backgroundSecondary 
+  },
+  dropdownText: { 
+    fontSize: 16,
+    color: colors.textPrimary
+  },
+  button: { 
+    backgroundColor: colors.buttonPrimary, 
+    paddingVertical: 12, 
+    paddingHorizontal: 32, 
+    borderRadius: 8 
+  },
+  buttonText: { 
+    color: colors.textLight, 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
 });
 
