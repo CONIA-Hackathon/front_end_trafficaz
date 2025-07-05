@@ -1,10 +1,8 @@
-import React from 'react';
-import {useState} from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import Button from '../../components/Button';
 import AlertCard from '../../components/AlertCard';
-import ButtomNav from '../../components/BottomNav';
+
 import Toggle from '../../components/Toggle'
 
 const HomeScreen = () => {
@@ -17,7 +15,11 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to TrafficAZ!</Text>
+      <Text style={styles.title}>
+        <Text style={styles.traffic}>Traffic</Text>
+        <Text style={styles.az}>AZ</Text>
+      </Text>
+
       <Text style={styles.subtitle}>Your real-time traffic congestion and alert app.</Text>
       <Button title="Go to Profile" onPress={() => {}} style={styles.button} />
       <Link href="/ProfileScreen" style={styles.link}>Or tap here for Profile (expo-router Link)</Link>
@@ -26,7 +28,7 @@ const HomeScreen = () => {
         <Text style={styles.sectionTitle}>Traffic Alert:</Text>
         <AlertCard alert={sampleAlert} />        
       </View>
-      <ButtomNav />
+      
     </View>
   );
 };
@@ -42,12 +44,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 2
   },
-  container: { flex: 1, justifyContent: 'center', alignItems: 'flex-start', padding: 16, backgroundColor: '#f8f9fa' },
+  container: { flex: 1, alignItems: 'flex-start', padding: 16, backgroundColor: '#f8f9fa' },
   title: { fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
   subtitle: { fontSize: 16, color: '#555', marginBottom: 24 },
   button: { width: '80%' },
   link: { color: '#007bff', marginVertical: 12 },
   sectionTitle: { fontSize: 20, fontWeight: 'bold', marginTop: 3, marginBottom: 8 },
+  traffic: {color:'#FF3951'}
 });
 
 export default HomeScreen;
