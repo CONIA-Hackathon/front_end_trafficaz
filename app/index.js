@@ -1,112 +1,44 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { WebView } from 'react-native-webview';
+import { useAuth } from '../context/AuthContext';
 import colors from '../constants/colors';
-import { fontFamily, fontSizes } from '../constants/fonts';
 
-const languages = [
-  { label: 'English', value: 'en' },
-  { label: 'French', value: 'fr' },
-];
-
-// Replace this with your actual remote GIF URL
-const REMOTE_GIF_URL = 'https://i.pinimg.com/originals/08/a4/67/08a467875def4f8c3cda15bb693263ee.gif';
-
-export default function OnboardingScreen() {
-  const [selectedLang, setSelectedLang] = useState('en');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+export default function Index() {
+  const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
 
-  // HTML content for the WebView to display the GIF without borders
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            background-color: transparent;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
+  useEffect(() => {
+    if (!loading) {
+      // Check if user has completed onboarding (you can store this in AsyncStorage)
+      // For now, we'll assume they need to go through onboarding
+      const checkOnboardingStatus = async () => {
+        try {
+          // You can add AsyncStorage check here for onboarding completion
+          // const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+          
+          if (isAuthenticated) {
+            // User is authenticated, go to home
+            router.replace('/Home');
+          } else {
+            // User is not authenticated, go to onboarding
+            router.replace('/onboarding');
           }
-          img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border: none;
-            outline: none;
-          }
-        </style>
-      </head>
-      <body>
-        <img src="${REMOTE_GIF_URL}" alt="TrafficAZ GIF" />
-      </body>
-    </html>
-  `;
+        } catch (error) {
+          console.error('Error checking onboarding status:', error);
+          // Default to onboarding on error
+          router.replace('/onboarding');
+        }
+      };
 
+      checkOnboardingStatus();
+    }
+  }, [isAuthenticated, loading, router]);
+
+  // Show loading screen while checking authentication
   return (
     <View style={styles.container}>
-      <View style={styles.centerContent}>
-        <View style={styles.gifContainer}>
-          <WebView
-            source={{ html: htmlContent }}
-            style={styles.gif}
-            originWhitelist={['*']}
-            useWebKit
-            scrollEnabled={false}
-            javaScriptEnabled={false}
-            allowsInlineMediaPlayback
-            backgroundColor="transparent"
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            overScrollMode="never"
-          />
-        </View>
-        <Text style={styles.title}>TrafficAZ</Text>
-      </View>
-      <View style={styles.dropdownWrapper}>
-        <TouchableOpacity
-          style={styles.dropdown}
-          onPress={() => setDropdownOpen(!dropdownOpen)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.dropdownText}>
-            {languages.find(l => l.value === selectedLang)?.label || 'Select a language'}
-          </Text>
-          <Ionicons name={dropdownOpen ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        {dropdownOpen && (
-          <View style={styles.dropdownList}>
-            {languages.map(lang => (
-              <TouchableOpacity
-                key={lang.value}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSelectedLang(lang.value);
-                  setDropdownOpen(false);
-                }}
-              >
-                <Text style={styles.dropdownItemText}>{lang.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/auth/login')}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="arrow-forward" size={28} color={colors.white} />
-      </TouchableOpacity>
+      <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 }
@@ -114,97 +46,9 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 80,
-  },
-  centerContent: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  gifContainer: {
-    width: 220,
-    height: 220,
-    marginBottom: 12,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
-  gif: {
-    width: 220,
-    height: 220,
-    backgroundColor: 'transparent',
-  },
-  title: {
-    fontSize: fontSizes['5xl'],
-    fontFamily: fontFamily.bold,
-    color: colors.white,
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  dropdownWrapper: {
-    width: '50%',
-    minWidth: 220,
-    alignItems: 'center',
-    marginBottom: 0,
-  },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    minWidth: 220,
-    justifyContent: 'space-between',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-  },
-  dropdownText: {
-    color: colors.textPrimary,
-    fontSize: fontSizes.base,
-    fontFamily: fontFamily.medium,
-  },
-  dropdownList: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    elevation: 3,
-    zIndex: 10,
-    paddingVertical: 4,
-    marginTop: 2,
-  },
-  dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-  },
-  dropdownItemText: {
-    fontSize: fontSizes.base,
-    fontFamily: fontFamily.regular,
-    color: colors.textPrimary,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 40,
-    right: 32,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.black,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    backgroundColor: colors.background,
   },
 });
 

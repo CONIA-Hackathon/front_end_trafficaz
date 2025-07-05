@@ -1,22 +1,48 @@
-import colors from './colors';
-import fonts from './fonts';
-
-export default {
-  colors,
-  fonts,
-  
-  // Spacing
+export const theme = {
+  colors: {
+    primary: '#FF3951',
+    secondary: '#6C757D',
+    success: '#28A745',
+    warning: '#FFC107',
+    danger: '#DC3545',
+    info: '#17A2B8',
+    light: '#F8F9FA',
+    dark: '#343A40',
+    white: '#FFFFFF',
+    black: '#000000',
+    gray: '#6C757D',
+    grayLight: '#E9ECEF',
+    grayDark: '#495057',
+    background: '#F8F9FA',
+    surface: '#FFFFFF',
+    textPrimary: '#212529',
+    textSecondary: '#6C757D',
+    border: '#DEE2E6',
+  },
+  fonts: {
+    regular: 'System',
+    medium: 'System',
+    semiBold: 'System',
+    bold: 'System',
+  },
+  fontSizes: {
+    xs: 12,
+    sm: 14,
+    md: 16,
+    lg: 18,
+    xl: 20,
+    xxl: 24,
+    xxxl: 28,
+    display: 32,
+  },
   spacing: {
     xs: 4,
     sm: 8,
     md: 16,
     lg: 24,
     xl: 32,
-    '2xl': 48,
-    '3xl': 64,
+    xxl: 48,
   },
-  
-  // Border Radius
   borderRadius: {
     sm: 4,
     md: 8,
@@ -24,28 +50,35 @@ export default {
     xl: 16,
     full: 9999,
   },
-  
-  // Shadows
   shadows: {
     sm: {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.18,
+      shadowRadius: 1.0,
+      elevation: 1,
     },
     md: {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     lg: {
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.30,
+      shadowRadius: 4.65,
       elevation: 8,
     },
   },

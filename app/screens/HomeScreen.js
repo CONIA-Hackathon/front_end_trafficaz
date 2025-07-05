@@ -1,11 +1,16 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import BottomNav from '../../components/BottomNav';
 import Button from '../../components/Button';
 import AlertCard from '../../components/AlertCard';
-
-import Toggle from '../../components/Toggle'
+import Toggle from '../../components/Toggle';
+import colors from '../../constants/colors';
+import { useAuth } from '../../context/AuthContext';
 
 const HomeScreen = () => {
+  const { logout, user } = useAuth();
   
   const sampleAlert = {
     title: 'Heavy Traffic Ahead',
@@ -13,44 +18,144 @@ const HomeScreen = () => {
     time:'2:30pm'
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        <Text style={styles.traffic}>Traffic</Text>
-        <Text style={styles.az}>AZ</Text>
-      </Text>
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Navigation will be handled by the index screen
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
-      <Text style={styles.subtitle}>Your real-time traffic congestion and alert app.</Text>
-      <Button title="Go to Profile" onPress={() => {}} style={styles.button} />
-      <Link href="/ProfileScreen" style={styles.link}>Or tap here for Profile (expo-router Link)</Link>
-      <Toggle />
-      <View style={styles.alertArea}>
-        <Text style={styles.sectionTitle}>Traffic Alert:</Text>
-        <AlertCard alert={sampleAlert} />        
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>
+            <Text style={styles.traffic}>Traffic</Text>
+            <Text style={styles.az}>AZ</Text>
+          </Text>
+          <Text style={styles.subtitle}>Real-time traffic alerts</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Toggle />
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
-      
-    </View>
+
+      {/* Content */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeText}>
+            Welcome back, {user?.name || 'User'}!
+          </Text>
+        </View>
+
+        <View style={styles.alertArea}>
+          <Text style={styles.sectionTitle}>Latest Traffic Alert:</Text>
+          <AlertCard alert={sampleAlert} />
+        </View>
+
+        <View style={styles.quickActions}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionButtons}>
+            <Button title="Report Traffic" onPress={() => {}} style={styles.actionButton} />
+            <Button title="View Map" onPress={() => {}} style={styles.actionButton} />
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-   alertArea: {
-    flexDirection: 'colomn',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    marginVertical: 6,
-    elevation: 2,
-    alignItems: 'flex-start',
-    gap: 2
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  container: { flex: 1, alignItems: 'flex-start', padding: 16, backgroundColor: '#f8f9fa' },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#555', marginBottom: 24 },
-  button: { width: '80%' },
-  link: { color: '#007bff', marginVertical: 12 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginTop: 3, marginBottom: 8 },
-  traffic: {color:'#FF3951'}
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  traffic: {
+    color: colors.primary,
+  },
+  az: {
+    color: colors.textPrimary,
+  },
+  logoutButton: {
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  welcomeSection: {
+    marginBottom: 24,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  alertArea: {
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: colors.textPrimary,
+  },
+  quickActions: {
+    marginBottom: 24,
+  },
+  actionButtons: {
+    gap: 12,
+  },
+  actionButton: {
+    marginBottom: 0,
+  },
 });
 
 export default HomeScreen;

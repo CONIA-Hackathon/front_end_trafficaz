@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../context/AuthContext';
-import { AlertProvider } from '../context/AlertContext';
-import { useAppFonts } from '../constants/fonts';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { LanguageProvider } from '../context/LanguageContext';
 import BottomNav from '../components/BottomNav';
 
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
-  const fontsLoaded = useAppFonts();
   const pathname = usePathname();
 
   // Screens where BottomNav should be hidden
@@ -16,24 +17,33 @@ export default function RootLayout() {
     '/auth/login',
     '/auth/otp',
     '/auth/register',
+    '/onboarding',
     '/'
   ];
 
   const showBottomNav = !hideBottomNavOn.includes(pathname);
 
-  if (!fontsLoaded) {
-    return <LoadingSpinner />;
-  }
+  useEffect(() => {
+    // Hide splash screen after a short delay
+    const hideSplash = async () => {
+      await SplashScreen.hideAsync();
+    };
+    
+    // Hide splash screen after 1 second
+    setTimeout(hideSplash, 1000);
+  }, []);
 
   return (
-    <AuthProvider>
-      <AlertProvider>
+    <LanguageProvider>
+      <AuthProvider>
         <View style={styles.container}>
-          <Stack />
+          <Stack screenOptions={{ headerShown: false }}>
+            {/* Let expo-router handle the routing automatically */}
+          </Stack>
           {showBottomNav && <BottomNav />}
         </View>
-      </AlertProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

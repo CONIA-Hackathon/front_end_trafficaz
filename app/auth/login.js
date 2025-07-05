@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import Button from '../../components/Button';
 import InputField from '../../components/InputField';
 import colors from '../../constants/colors';
+import { login, sendOtp } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen() {
   const [formData, setFormData] = useState({
@@ -11,7 +13,9 @@ export default function LoginScreen() {
     password: ''
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { setPhoneNumberForOtp } = useAuth();
 
   const validateForm = () => {
     const newErrors = {};
@@ -32,11 +36,29 @@ export default function LoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = () => {
-    if (validateForm()) {
-      // TODO: Call login API
-      console.log('Logging in with:', formData);
+  const handleLogin = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      // Login the user
+      const loginResponse = await login(formData.phoneNumber, formData.password);
+      console.log('Login successful:', loginResponse);
+
+      // Store phone number in context for OTP screen
+      setPhoneNumberForOtp(formData.phoneNumber);
+
+      // Send OTP after successful login
+      const otpResponse = await sendOtp(formData.phoneNumber);
+      console.log('OTP sent:', otpResponse);
+
+      // Navigate to OTP screen
       router.push('/auth/otp');
+    } catch (error) {
+      console.error('Login failed:', error);
+      Alert.alert('Login Failed', error.message || 'Invalid phone number or password. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,7 +114,12 @@ export default function LoginScreen() {
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
-          <Button title="Login" onPress={handleLogin} style={styles.button} />
+          <Button 
+            title={loading ? "Signing In..." : "Login"} 
+            onPress={handleLogin} 
+            style={styles.button}
+            disabled={loading}
+          />
           
           <View style={styles.registerLink}>
             <Text style={styles.registerText}>Don't have an account? </Text>
