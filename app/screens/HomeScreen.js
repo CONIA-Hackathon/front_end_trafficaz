@@ -26,7 +26,10 @@ const HomeScreen = () => {
       <Toggle />
       <View style={styles.alertArea}>
         <Text style={styles.sectionTitle}>Traffic Alert:</Text>
-        <AlertCard alert={sampleAlert} />        
+        <AlertCard alert={sampleAlert} />   
+        <AlertCard alert={sampleAlert} /> 
+        <AlertCard alert={sampleAlert} /> 
+            
       </View>
       
     </View>
@@ -40,7 +43,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginVertical: 6,
-    elevation: 2,
+    elevation: 0,
     alignItems: 'flex-start',
     gap: 2
   },
