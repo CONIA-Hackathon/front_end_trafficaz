@@ -1,18 +1,75 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import BottomNav from '../../components/BottomNav';
 import Button from '../../components/Button';
 import colors from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import * as userService from '../../services/userService';
 
 const ProfileScreen = () => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
+  const router = useRouter();
+  
+  const [userData, setUserData] = useState(null);
+  const [userStats, setUserStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      // Try to fetch real data from API
+      if (token) {
+        try {
+          const [profileData, statsData] = await Promise.all([
+            userService.getUserProfile(token),
+            userService.getUserStats(token)
+          ]);
+          
+          setUserData(profileData);
+          setUserStats(statsData);
+        } catch (error) {
+          console.log('Using mock data due to API error:', error);
+          // Fallback to mock data
+          setUserData(userService.getMockUserData());
+          setUserStats(userService.getMockUserStats());
+        }
+      } else {
+        // Use mock data if no token
+        setUserData(userService.getMockUserData());
+        setUserStats(userService.getMockUserStats());
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      // Fallback to mock data
+      setUserData(userService.getMockUserData());
+      setUserStats(userService.getMockUserStats());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    console.log('=== LOGOUT PROCESS STARTED ===');
+    console.log('Current user:', user);
+    console.log('Current token:', token);
+    
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -20,11 +77,30 @@ const ProfileScreen = () => {
         {
           text: 'Cancel',
           style: 'cancel',
+          onPress: () => {
+            console.log('Logout cancelled by user');
+          },
         },
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => logout(),
+          onPress: async () => {
+            try {
+              console.log('User confirmed logout, starting logout process...');
+              setLogoutLoading(true);
+              
+              await logout();
+              console.log('Logout successful, navigating to login...');
+              
+              // Navigate to login screen
+              router.replace('/auth/login');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Logout Error', 'There was an error logging out. Please try again.');
+            } finally {
+              setLogoutLoading(false);
+            }
+          },
         },
       ]
     );
@@ -35,19 +111,37 @@ const ProfileScreen = () => {
       icon: 'person-outline',
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
-      onPress: () => console.log('Edit Profile'),
+      onPress: () => {
+        Alert.alert(
+          'Edit Profile',
+          'Profile editing feature will be available soon!',
+          [{ text: 'OK' }]
+        );
+      },
     },
     {
       icon: 'notifications-outline',
       title: 'Notifications',
-      subtitle: 'Manage your notification preferences',
-      onPress: () => console.log('Notifications'),
+      subtitle: userData?.preferences?.notifications ? 'Enabled' : 'Disabled',
+      onPress: () => {
+        Alert.alert(
+          'Notifications',
+          'Notification settings will be available soon!',
+          [{ text: 'OK' }]
+        );
+      },
     },
     {
       icon: 'shield-outline',
       title: 'Privacy & Security',
       subtitle: 'Control your privacy settings',
-      onPress: () => console.log('Privacy'),
+      onPress: () => {
+        Alert.alert(
+          'Privacy & Security',
+          'Privacy settings will be available soon!',
+          [{ text: 'OK' }]
+        );
+      },
     },
     {
       icon: 'language-outline',
@@ -56,21 +150,53 @@ const ProfileScreen = () => {
       onPress: () => {
         const newLang = language === 'en' ? 'fr' : 'en';
         changeLanguage(newLang);
+        Alert.alert(
+          'Language Changed',
+          `Language changed to ${newLang === 'en' ? 'English' : 'Français'}`,
+          [{ text: 'OK' }]
+        );
       },
     },
     {
       icon: 'help-circle-outline',
       title: 'Help & Support',
       subtitle: 'Get help and contact support',
-      onPress: () => console.log('Help'),
+      onPress: () => {
+        Alert.alert(
+          'Help & Support',
+          'Contact us at support@trafficaz.com\n\nPhone: +237 612 345 678',
+          [{ text: 'OK' }]
+        );
+      },
     },
     {
       icon: 'information-circle-outline',
       title: 'About',
       subtitle: 'App version and information',
-      onPress: () => console.log('About'),
+      onPress: () => {
+        Alert.alert(
+          'About TrafficAZ',
+          'TrafficAZ v1.0.0\n\nA driver-first, voice-interactive traffic assistant for Cameroon.\n\n© 2025 TrafficAZ Team',
+          [{ text: 'OK' }]
+        );
+      },
     },
   ];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+        <BottomNav />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -84,23 +210,40 @@ const ProfileScreen = () => {
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
-        bounces={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadUserData(true)}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
-                <Ionicons name="person" size={40} color={colors.white} />
+                {userData?.avatar ? (
+                  <Image source={{ uri: userData.avatar }} style={styles.avatarImage} />
+                ) : (
+                  <Ionicons name="person" size={40} color={colors.white} />
+                )}
               </View>
               <TouchableOpacity style={styles.editAvatar}>
                 <Ionicons name="camera" size={16} color={colors.white} />
               </TouchableOpacity>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user?.name || 'User'}</Text>
-              <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
-              <Text style={styles.userPhone}>{user?.phone || '+1234567890'}</Text>
+              <Text style={styles.userName}>{userData?.name || user?.name || 'User'}</Text>
+              <Text style={styles.userEmail}>{userData?.email || user?.email || 'user@example.com'}</Text>
+              <Text style={styles.userPhone}>{userData?.phoneNumber || user?.phoneNumber || '+1234567890'}</Text>
+              {userData?.isVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                  <Text style={styles.verifiedText}>Verified</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -108,17 +251,17 @@ const ProfileScreen = () => {
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>24</Text>
+            <Text style={styles.statNumber}>{userStats?.totalRoutes || 0}</Text>
             <Text style={styles.statLabel}>Routes</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>156</Text>
+            <Text style={styles.statNumber}>{userStats?.totalAlerts || 0}</Text>
             <Text style={styles.statLabel}>Alerts</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>89</Text>
+            <Text style={styles.statNumber}>{userStats?.totalReports || 0}</Text>
             <Text style={styles.statLabel}>Reports</Text>
           </View>
         </View>
@@ -153,6 +296,7 @@ const ProfileScreen = () => {
             onPress={handleLogout}
             icon="log-out-outline"
             style={styles.logoutButton}
+            loading={logoutLoading}
           />
         </View>
 
@@ -218,6 +362,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
   editAvatar: {
     position: 'absolute',
     bottom: 0,
@@ -248,6 +397,17 @@ const styles = StyleSheet.create({
   userPhone: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  verifiedText: {
+    fontSize: 12,
+    color: colors.success,
+    marginLeft: 4,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -339,6 +499,16 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
+    color: colors.textSecondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
     color: colors.textSecondary,
   },
 });

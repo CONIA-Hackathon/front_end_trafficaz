@@ -18,7 +18,7 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { setPhoneNumberForOtp } = useAuth();
+  const { setPhoneNumberForOtp, setDevelopmentOtpCode } = useAuth();
   const { t } = useLanguage();
 
   const validateForm = () => {
@@ -55,6 +55,13 @@ export default function LoginScreen() {
       // Send OTP after successful login
       const otpResponse = await sendOtp(formData.phoneNumber);
       console.log('OTP sent:', otpResponse);
+
+      // Extract OTP from response for development
+      const otpCode = otpResponse.data?.otpCode;
+      if (otpCode) {
+        console.log('Development OTP from login:', otpCode);
+        setDevelopmentOtpCode(otpCode);
+      }
 
       // Navigate to OTP screen
       router.push('/auth/otp');
