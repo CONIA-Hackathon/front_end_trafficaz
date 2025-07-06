@@ -468,8 +468,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 📞 Support
 
 - **Email**: support@trafficaz.com
-- **Documentation**: [docs.trafficaz.com](https://docs.trafficaz.com)
-- **Issues**: [GitHub Issues](https://github.com/your-username/trafficaz-frontend/issues)
+- **Documentation**: [docs.trafficaz.com](https://github.com/CONIA-Hackathon/front_end_trafficaz)
+- **Issues**: [GitHub Issues](https://github.com/CONIA-Hackathon/front_end_trafficaz/issues)
 - **Discord**: [TrafficAZ Community](https://discord.gg/trafficaz)
 
 ---
