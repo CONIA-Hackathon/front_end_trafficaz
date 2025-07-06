@@ -73,14 +73,19 @@ const ProfileScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+        bounces={true}
+      >
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
@@ -182,6 +187,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+  },
+  contentContainer: {
+    paddingBottom: 100, // Extra padding to account for bottom navigation
   },
   profileCard: {
     backgroundColor: colors.white,
@@ -319,13 +327,15 @@ const styles = StyleSheet.create({
   },
   logoutContainer: {
     marginBottom: 20,
+    paddingBottom: 20,
   },
   logoutButton: {
     width: '100%',
   },
   versionContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 30,
+    paddingBottom: 40,
   },
   versionText: {
     fontSize: 12,

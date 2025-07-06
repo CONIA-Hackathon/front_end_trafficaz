@@ -16,7 +16,7 @@ import {
   ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
@@ -64,6 +64,9 @@ export default function RouteSetupScreen() {
   });
   const [startCoords, setStartCoords] = useState(null);
   const [endCoords, setEndCoords] = useState(null);
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [routeDistance, setRouteDistance] = useState(0);
+  const [routeDuration, setRouteDuration] = useState(0);
   const [backendUsers, setBackendUsers] = useState([]);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [locationSubscription, setLocationSubscription] = useState(null);
@@ -526,10 +529,27 @@ export default function RouteSetupScreen() {
       }
 
       if (startPoint && endPoint) {
+        // Calculate route coordinates for polyline
+        const routeCoords = calculateRouteCoordinates(startPoint, endPoint);
+        setRouteCoordinates(routeCoords);
+        
+        // Calculate route distance and estimated duration
+        const distance = calculateDistance(
+          startPoint.latitude, startPoint.longitude,
+          endPoint.latitude, endPoint.longitude
+        );
+        setRouteDistance(distance);
+        
+        // Estimate duration based on average speed (30 km/h for city driving)
+        const estimatedDuration = (distance / 1000) / 30 * 60; // Convert to minutes
+        setRouteDuration(estimatedDuration);
+        
         // Check traffic along the route
         console.log('🛣️ Checking traffic for route:', {
           start: startPoint,
-          end: endPoint
+          end: endPoint,
+          distance: (distance / 1000).toFixed(2) + ' km',
+          estimatedDuration: Math.round(estimatedDuration) + ' min'
         });
 
         const routeTraffic = await trafficService.checkRouteTraffic(
@@ -569,6 +589,35 @@ export default function RouteSetupScreen() {
       console.error('Error checking route traffic:', error);
       Alert.alert('Error', 'Could not analyze traffic for this route.');
     }
+  };
+
+  // Calculate route coordinates for polyline
+  const calculateRouteCoordinates = (start, end) => {
+    // For now, create a simple straight line between points
+    // In a real app, you'd use a routing service like Google Directions API
+    const coordinates = [
+      { latitude: start.latitude, longitude: start.longitude },
+      { latitude: end.latitude, longitude: end.longitude }
+    ];
+    
+    // Add some intermediate points for a more realistic route
+    const steps = 10;
+    const routePoints = [];
+    
+    for (let i = 0; i <= steps; i++) {
+      const fraction = i / steps;
+      const lat = start.latitude + (end.latitude - start.latitude) * fraction;
+      const lng = start.longitude + (end.longitude - start.longitude) * fraction;
+      
+      // Add some realistic road curves (simple sine wave pattern)
+      const curveOffset = Math.sin(fraction * Math.PI) * 0.0005;
+      routePoints.push({
+        latitude: lat + curveOffset,
+        longitude: lng + curveOffset
+      });
+    }
+    
+    return routePoints;
   };
 
   // Calculate distance between two points in meters
@@ -761,12 +810,30 @@ export default function RouteSetupScreen() {
           <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
         
-        <TouchableOpacity 
-          style={styles.locationButton}
-          onPress={centerOnUserLocation}
-        >
-          <Ionicons name="locate" size={20} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          {endCoords && (
+            <TouchableOpacity 
+              style={styles.clearRouteButton}
+              onPress={() => {
+                setStartCoords(null);
+                setEndCoords(null);
+                setRouteCoordinates([]);
+                setRouteDistance(0);
+                setRouteDuration(0);
+                setEndLocation('');
+              }}
+            >
+              <Ionicons name="close-circle" size={20} color={colors.danger} />
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity 
+            style={styles.locationButton}
+            onPress={centerOnUserLocation}
+          >
+            <Ionicons name="locate" size={20} color={colors.white} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Speed Indicator */}
@@ -851,10 +918,77 @@ export default function RouteSetupScreen() {
         {endCoords && (
           <Marker coordinate={endCoords} pinColor="blue" title="End" />
         )}
+
+        {/* Route Polyline */}
+        {routeCoordinates.length > 0 && (
+          <>
+            {/* Main route line */}
+            <Polyline
+              coordinates={routeCoordinates}
+              strokeWidth={6}
+              strokeColor={colors.primary}
+              lineCap="round"
+              lineJoin="round"
+              zIndex={1}
+            />
+            
+            {/* Route border/outline for better visibility */}
+            <Polyline
+              coordinates={routeCoordinates}
+              strokeWidth={8}
+              strokeColor="rgba(255, 255, 255, 0.8)"
+              lineCap="round"
+              lineJoin="round"
+              zIndex={0}
+            />
+            
+            {/* Direction arrows along the route */}
+            {routeCoordinates.length > 2 && routeCoordinates.slice(1, -1).map((coord, index) => (
+              <Marker
+                key={`arrow-${index}`}
+                coordinate={coord}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={styles.routeArrowMarker}>
+                  <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                </View>
+              </Marker>
+            ))}
+          </>
+        )}
+        
+        {/* Fallback simple line if no calculated route */}
+        {startCoords && endCoords && routeCoordinates.length === 0 && (
+          <Polyline
+            coordinates={[startCoords, endCoords]}
+            strokeWidth={4}
+            strokeColor={colors.primary}
+            lineDashPattern={[5, 5]}
+            zIndex={1}
+          />
+        )}
       </MapView>
 
       {/* Info Panel */}
       <View style={styles.infoPanel}>
+        {/* Route Information */}
+        {routeDistance > 0 && (
+          <View style={styles.routeInfoContainer}>
+            <View style={styles.routeInfoItem}>
+              <Ionicons name="map" size={16} color={colors.primary} />
+              <Text style={styles.routeInfoText}>
+                Distance: {(routeDistance / 1000).toFixed(1)} km
+              </Text>
+            </View>
+            <View style={styles.routeInfoItem}>
+              <Ionicons name="time" size={16} color={colors.warning} />
+              <Text style={styles.routeInfoText}>
+                Est. Time: {Math.round(routeDuration)} min
+              </Text>
+            </View>
+          </View>
+        )}
+        
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
             <View style={styles.userLocationDot} />
@@ -1038,6 +1172,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clearRouteButton: {
+    backgroundColor: colors.white,
+    padding: 10,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -1160,6 +1308,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  routeInfoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  routeInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  routeInfoText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginLeft: 4,
   },
   legendContainer: {
     flexDirection: 'row',
@@ -1384,5 +1554,15 @@ const styles = StyleSheet.create({
   searchButtonDisabled: {
     backgroundColor: colors.textSecondary,
     opacity: 0.7,
+  },
+  routeArrowMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
 });
