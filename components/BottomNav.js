@@ -14,7 +14,7 @@ const BottomNav = () => {
   const tabs = [
     { label: 'Home', icon: 'home-outline', path: '/Home' },
     { label: 'Map', icon: 'map-outline', path: '/Map' },
-    { label: 'Image', icon: 'image-outline', path: '/ImagesView' },
+    { label: 'A.I', icon: 'sparkles-outline', path: '/ImagesView' },
     { label: 'Alerts', icon: 'notifications-outline', path: '/Alert' },
     { label: 'Me', icon: 'person-outline', path: '/Profile' }
   ];

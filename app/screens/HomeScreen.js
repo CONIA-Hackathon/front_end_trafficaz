@@ -291,7 +291,56 @@ const HomeScreen = () => {
               <Text style={styles.statLabel}>Alerts Today</Text>
             </View>
           </View>
+          
         </View>
+        {/*quick actions*/}
+         <View style={styles.actionsSection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="flash" size={20} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
+          </View>
+          
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={navigateToScheduledRoutes}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name="add-circle" size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.actionText}>Add Route</Text>
+            </TouchableOpacity>
+            
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={navigateToWeather}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name="partly-sunny" size={24} color={colors.success} />
+              </View>
+              <Text style={styles.actionText}>Weather</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.actionCard, isReporting && styles.actionCardDisabled]}
+              onPress={reportTraffic}
+              disabled={isReporting}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons 
+                  name={isReporting ? "radio-button-on" : "radio-button-on"} 
+                  size={24} 
+                  color={isReporting ? colors.textSecondary : colors.danger} 
+                />
+              </View>
+              <Text style={[styles.actionText, isReporting && styles.actionTextDisabled]}>
+                {isReporting ? 'Reporting...' : 'Report Traffic'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
 
         {/* Scheduled Routes Section */}
         <View style={styles.scheduledRoutesSection}>
@@ -374,72 +423,7 @@ const HomeScreen = () => {
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.actionsSection}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="flash" size={20} color={colors.textPrimary} />
-            <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-          </View>
-          
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={navigateToScheduledRoutes}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="add-circle" size={24} color={colors.primary} />
-              </View>
-              <Text style={styles.actionText}>Add Route</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={navigateToMap}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="map" size={24} color={colors.info} />
-              </View>
-              <Text style={styles.actionText}>{t('viewMap')}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={navigateToAlerts}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="notifications" size={24} color={colors.warning} />
-              </View>
-              <Text style={styles.actionText}>View Alerts</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={navigateToWeather}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="partly-sunny" size={24} color={colors.success} />
-              </View>
-              <Text style={styles.actionText}>Weather</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionCard, isReporting && styles.actionCardDisabled]}
-              onPress={reportTraffic}
-              disabled={isReporting}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons 
-                  name={isReporting ? "radio-button-on" : "radio-button-on"} 
-                  size={24} 
-                  color={isReporting ? colors.textSecondary : colors.danger} 
-                />
-              </View>
-              <Text style={[styles.actionText, isReporting && styles.actionTextDisabled]}>
-                {isReporting ? 'Reporting...' : 'Report Traffic'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
+       
         {/* Recent Activity */}
         <View style={styles.activitySection}>
           <View style={styles.sectionHeader}>
