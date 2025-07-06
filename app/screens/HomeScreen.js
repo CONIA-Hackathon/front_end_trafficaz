@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import Button from '../../components/Button';
 import AlertCard from '../../components/AlertCard';
 import Toggle from '../../components/Toggle';
@@ -14,6 +15,7 @@ const HomeScreen = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const [isReporting, setIsReporting] = useState(false);
   
   const sampleAlert = {
     title: 'Heavy Traffic Ahead',
@@ -135,6 +137,95 @@ const HomeScreen = () => {
 
   const navigateToProfile = () => {
     router.push('/Profile');
+  };
+
+  const reportTraffic = async () => {
+    try {
+      setIsReporting(true);
+
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to report traffic.');
+        return;
+      }
+
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude, longitude } = location.coords;
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Report Traffic',
+        'Are you experiencing traffic congestion in your current area?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setIsReporting(false)
+          },
+          {
+            text: 'Yes, Report Traffic',
+            style: 'default',
+            onPress: async () => {
+              try {
+                // Mock API call to backend
+                console.log('🚨 Reporting traffic at:', { latitude, longitude });
+                
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Mock response
+                const response = {
+                  success: true,
+                  message: 'Traffic reported successfully',
+                  usersNotified: Math.floor(Math.random() * 50) + 10, // Random number of users
+                  area: 'Central Yaoundé'
+                };
+
+                Alert.alert(
+                  'Traffic Reported! 🚨',
+                  `Traffic congestion has been reported in your area.\n\n${response.usersNotified} nearby users have been notified.\n\nThank you for helping the community!`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        // Add to recent activity
+                        const newActivity = {
+                          id: Date.now().toString(),
+                          type: 'traffic_report',
+                          icon: 'radio-button-on',
+                          color: colors.danger,
+                          text: `Traffic reported in ${response.area} - ${response.usersNotified} users notified`,
+                          time: 'Just now'
+                        };
+                        
+                        // In a real app, you'd update the activity list
+                        console.log('📱 New activity:', newActivity);
+                      }
+                    }
+                  ]
+                );
+
+              } catch (error) {
+                console.error('Error reporting traffic:', error);
+                Alert.alert('Error', 'Failed to report traffic. Please try again.');
+              } finally {
+                setIsReporting(false);
+              }
+            }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Could not get your location. Please try again.');
+      setIsReporting(false);
+    }
   };
 
   return (
@@ -308,13 +399,20 @@ const HomeScreen = () => {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={navigateToProfile}
+              style={[styles.actionCard, isReporting && styles.actionCardDisabled]}
+              onPress={reportTraffic}
+              disabled={isReporting}
             >
               <View style={styles.actionIcon}>
-                <Ionicons name="person" size={24} color={colors.secondary} />
+                <Ionicons 
+                  name={isReporting ? "radio-button-on" : "radio-button-on"} 
+                  size={24} 
+                  color={isReporting ? colors.textSecondary : colors.danger} 
+                />
               </View>
-              <Text style={styles.actionText}>Profile</Text>
+              <Text style={[styles.actionText, isReporting && styles.actionTextDisabled]}>
+                {isReporting ? 'Reporting...' : 'Report Traffic'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -514,6 +612,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+  actionCardDisabled: {
+    opacity: 0.7,
+  },
+  actionTextDisabled: {
+    color: colors.textSecondary,
   },
   activitySection: {
     marginBottom: 24,
