@@ -245,7 +245,13 @@ const ScheduledRoutesScreen = () => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={false}
+      >
         {scheduledRoutes.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="time-outline" size={64} color={colors.textSecondary} />
@@ -353,6 +359,7 @@ const ScheduledRoutesScreen = () => {
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
+        statusBarTranslucent={true}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -365,7 +372,11 @@ const ScheduledRoutesScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView 
+              style={styles.modalBody} 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <TextInput
                 style={styles.input}
                 placeholder="Route Name (e.g., Home to School)"
@@ -462,13 +473,17 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 120, // Add extra padding for bottom navigation
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    minHeight: 400,
   },
   emptyTitle: {
     fontSize: 20,
@@ -596,13 +611,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 20,
   },
   modalContent: {
-    width: '90%',
+    width: '100%',
     maxHeight: '80%',
     backgroundColor: colors.white,
     borderRadius: 16,
     padding: 24,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -616,7 +637,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   modalBody: {
-    maxHeight: 400,
+    maxHeight: 300,
   },
   input: {
     borderWidth: 1,
