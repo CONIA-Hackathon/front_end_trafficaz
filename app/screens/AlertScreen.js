@@ -398,6 +398,8 @@ const AlertScreen = () => {
                     style={styles.actionButton}
                     onPress={() => {
                       // Navigate to map screen
+                      //get start and stop location then open it in the map section
+                      //also request cars around that start and stop location
                       router.push('/Map');
                     }}
                   >

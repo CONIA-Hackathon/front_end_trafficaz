@@ -372,7 +372,7 @@ export default function ImagesScreen() {
         </View>
         
         <TouchableOpacity style={styles.viewDetailsButton}>
-          <Text style={styles.viewDetailsText}>View Details</Text>
+          <Text style={styles.viewDetailsText}>Details</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -402,7 +402,7 @@ export default function ImagesScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🚦 Road Analysis</Text>
+        <Text style={styles.headerTitle}>Road Analysis</Text>
         <Text style={styles.headerSubtitle}>CCTV & Drone Image Analysis</Text>
       </View>
 
@@ -479,7 +479,7 @@ export default function ImagesScreen() {
         )}
       </View>
 
-      {/* Analysis Results */}
+      {/* Analysis Results ////////////////////////////////////////////////////////*/} 
       <View style={styles.resultsSection}>
         <View style={styles.resultsHeader}>
           <Text style={styles.sectionTitle}>Recent Analysis</Text>
@@ -552,6 +552,7 @@ export default function ImagesScreen() {
           </View>
         </View>
       </Modal>
+     
 
       {/* Analysis Details Modal */}
       <Modal
@@ -671,11 +672,9 @@ const styles = StyleSheet.create({
     margin: 15,
     borderRadius: 15,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   captureHeader: {
     flexDirection: 'row',
@@ -776,18 +775,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     margin: 15,
     borderRadius: 15,
-    padding: 20,
+    padding: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0,
+    elevation: 2,
+    height: 40
   },
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   resultsCount: {
     fontSize: 14,
