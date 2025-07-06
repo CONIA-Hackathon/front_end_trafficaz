@@ -34,6 +34,8 @@ const AlertScreen = () => {
     doNotDisturbStart: '22:00',
     doNotDisturbEnd: '07:00',
     radiusKm: 2,
+    voiceGender: 'female',
+    voiceSpeed: 0.8,
   });
 
   // Mock notification data (replace with API calls)
@@ -161,10 +163,14 @@ const AlertScreen = () => {
 
       const speechText = `Traffic Alert: ${notification.message}. Location: ${notification.location}. Priority: ${notification.priority}.`;
 
+      // Voice settings based on user preferences
+      const voiceSettings = getVoiceSettings();
+
       await Speech.speak(speechText, {
-        language: 'en',
-        pitch: 1.0,
-        rate: 0.8,
+        language: voiceSettings.language,
+        pitch: voiceSettings.pitch,
+        rate: voiceSettings.rate,
+        voice: voiceSettings.voice,
         onDone: () => {
           setSpeaking(false);
           setCurrentSpeakingId(null);
@@ -180,6 +186,37 @@ const AlertScreen = () => {
       setSpeaking(false);
       setCurrentSpeakingId(null);
     }
+  };
+
+  const getVoiceSettings = () => {
+    const { voiceGender, voiceSpeed } = settingsForm;
+    
+    // Voice configurations for Cameroon with African accents
+    const voiceConfigs = {
+      female: {
+        language: 'en-US',
+        pitch: 1.1,
+        rate: voiceSpeed,
+        // Try different voice options for better African accent
+        voice: voiceGender === 'female' ? 'com.apple.ttsbundle.Karen-compact' : 'com.apple.ttsbundle.Daniel-compact'
+      },
+      male: {
+        language: 'en-US',
+        pitch: 0.9,
+        rate: voiceSpeed,
+        voice: voiceGender === 'male' ? 'com.apple.ttsbundle.Daniel-compact' : 'com.apple.ttsbundle.Karen-compact'
+      }
+    };
+
+    const genderConfig = voiceConfigs[voiceGender] || voiceConfigs.female;
+
+    return {
+      language: genderConfig.language,
+      pitch: genderConfig.pitch,
+      rate: genderConfig.rate,
+      // For Android and other platforms, use language codes that might have African accents
+      voice: genderConfig.voice
+    };
   };
 
   const getPriorityColor = (priority) => {
@@ -242,9 +279,21 @@ const AlertScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Traffic Alerts</Text>
-        <TouchableOpacity onPress={() => setSettingsModalVisible(true)}>
-          <Ionicons name="settings" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {/* <TouchableOpacity 
+            style={styles.testVoiceHeaderButton}
+            onPress={() => {
+              const testMessage = "Traffic alert test for Cameroon. Voice system ready.";
+              const voiceSettings = getVoiceSettings();
+              Speech.speak(testMessage, voiceSettings);
+            }}
+          >
+            <Ionicons name="volume-high" size={20} color={colors.primary} />
+          </TouchableOpacity> */}
+          <TouchableOpacity onPress={() => setSettingsModalVisible(true)}>
+            <Ionicons name="settings" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Quick Stats */}
@@ -348,8 +397,8 @@ const AlertScreen = () => {
                   <TouchableOpacity 
                     style={styles.actionButton}
                     onPress={() => {
-                      // TODO: Navigate to map with this location
-                      Alert.alert('View on Map', 'This will open the map showing the traffic location.');
+                      // Navigate to map screen
+                      router.push('/Map');
                     }}
                   >
                     <Ionicons name="map" size={16} color={colors.info} />
@@ -492,6 +541,112 @@ const AlertScreen = () => {
                   ))}
                 </View>
               </View>
+
+              {/* Voice Settings */}
+              <View style={styles.settingItem}>
+                <View style={styles.settingInfo}>
+                  <Ionicons name="mic" size={20} color={colors.primary} />
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingTitle}>Voice Settings</Text>
+                    <Text style={styles.settingSubtitle}>Customize your voice alerts</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Voice Gender */}
+              <View style={styles.settingItem}>
+                <View style={styles.settingInfo}>
+                  <Ionicons name="person" size={20} color={colors.primary} />
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingTitle}>Voice Gender</Text>
+                    <Text style={styles.settingSubtitle}>Choose male or female voice for Cameroon</Text>
+                  </View>
+                </View>
+                <View style={styles.genderSelector}>
+                  {[
+                    { key: 'female', label: 'Female', icon: 'female' },
+                    { key: 'male', label: 'Male', icon: 'male' }
+                  ].map((gender) => (
+                    <TouchableOpacity
+                      key={gender.key}
+                      style={[
+                        styles.genderButton,
+                        settingsForm.voiceGender === gender.key && styles.genderButtonActive
+                      ]}
+                      onPress={() => setSettingsForm(prev => ({ ...prev, voiceGender: gender.key }))}
+                    >
+                      <Ionicons 
+                        name={gender.icon} 
+                        size={16} 
+                        color={settingsForm.voiceGender === gender.key ? colors.white : colors.textSecondary} 
+                      />
+                      <Text style={[
+                        styles.genderButtonText,
+                        settingsForm.voiceGender === gender.key && styles.genderButtonTextActive
+                      ]}>
+                        {gender.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Voice Speed */}
+              <View style={styles.settingItem}>
+                <View style={styles.settingInfo}>
+                  <Ionicons name="speedometer" size={20} color={colors.primary} />
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingTitle}>Voice Speed</Text>
+                    <Text style={styles.settingSubtitle}>Adjust speaking speed for clear understanding</Text>
+                  </View>
+                </View>
+                <View style={styles.speedSelector}>
+                  {[
+                    { key: 0.6, label: 'Slow' },
+                    { key: 0.8, label: 'Normal' },
+                    { key: 1.0, label: 'Fast' },
+                    { key: 1.2, label: 'Very Fast' }
+                  ].map((speed) => (
+                    <TouchableOpacity
+                      key={speed.key}
+                      style={[
+                        styles.speedButton,
+                        settingsForm.voiceSpeed === speed.key && styles.speedButtonActive
+                      ]}
+                      onPress={() => setSettingsForm(prev => ({ ...prev, voiceSpeed: speed.key }))}
+                    >
+                      <Text style={[
+                        styles.speedButtonText,
+                        settingsForm.voiceSpeed === speed.key && styles.speedButtonTextActive
+                      ]}>
+                        {speed.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Test Voice Button */}
+              <View style={styles.settingItem}>
+                <TouchableOpacity 
+                  style={styles.testVoiceButton}
+                  onPress={() => {
+                    const testMessage = "Hello! This is your traffic alert voice test. The system is working perfectly for Cameroon.";
+                    const voiceSettings = getVoiceSettings();
+                    Speech.speak(testMessage, voiceSettings);
+                  }}
+                >
+                  <Ionicons name="play-circle" size={20} color={colors.white} />
+                  <Text style={styles.testVoiceButtonText}>Test Voice Settings</Text>
+                </TouchableOpacity>
+                
+                <View style={styles.voiceNote}>
+                  <Ionicons name="information-circle" size={16} color={colors.textSecondary} />
+                  <Text style={styles.voiceNoteText}>
+                    Note: Voice accent depends on your device's available voices. For better African accents, consider installing additional voice packages in your device settings.
+                  </Text>
+                </View>
+              </View>
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -535,6 +690,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.textPrimary,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  testVoiceHeaderButton: {
+    padding: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -836,6 +998,124 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  genderSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  genderButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  genderButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  genderButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  genderButtonTextActive: {
+    color: colors.white,
+  },
+  accentSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  accentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: '48%',
+  },
+  accentButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  accentFlag: {
+    fontSize: 16,
+  },
+  accentButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  accentButtonTextActive: {
+    color: colors.white,
+  },
+  speedSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  speedButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  speedButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  speedButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  speedButtonTextActive: {
+    color: colors.white,
+  },
+  testVoiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: colors.success,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  testVoiceButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  voiceNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+  },
+  voiceNoteText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
 });
 
