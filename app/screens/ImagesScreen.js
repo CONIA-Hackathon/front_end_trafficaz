@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -31,7 +32,7 @@ const SAMPLE_ANALYSIS_RESULTS = [
     location: 'Yaoundé Central Market',
     coordinates: { latitude: 3.848033, longitude: 11.502075 },
     imageUri: null,
-    captureType: 'cctv', // Added missing property
+    captureType: 'cctv',
     analysis: {
       trafficLevel: 'High',
       congestionScore: 85,
@@ -50,7 +51,7 @@ const SAMPLE_ANALYSIS_RESULTS = [
     location: 'Douala Port Road',
     coordinates: { latitude: 4.0511, longitude: 9.7679 },
     imageUri: null,
-    captureType: 'drone', // Added missing property
+    captureType: 'drone',
     analysis: {
       trafficLevel: 'Medium',
       congestionScore: 45,
@@ -60,6 +61,25 @@ const SAMPLE_ANALYSIS_RESULTS = [
       pedestrianCount: 12,
       incidents: ['Normal traffic flow'],
       recommendations: ['Monitor for peak hours']
+    },
+    status: 'completed'
+  },
+  {
+    id: '3',
+    timestamp: new Date(Date.now() - 7200000).toISOString(),
+    location: 'Bamenda Main Street',
+    coordinates: { latitude: 5.9597, longitude: 10.1459 },
+    imageUri: null,
+    captureType: 'cctv',
+    analysis: {
+      trafficLevel: 'Low',
+      congestionScore: 25,
+      roadCondition: 'Excellent',
+      weatherCondition: 'Clear',
+      vehicleCount: 15,
+      pedestrianCount: 8,
+      incidents: ['Clear road conditions'],
+      recommendations: ['Optimal driving conditions']
     },
     status: 'completed'
   }
@@ -76,7 +96,9 @@ export default function ImagesScreen() {
   const [showCaptureModal, setShowCaptureModal] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
-  const [captureType, setCaptureType] = useState('cctv'); // 'cctv' or 'drone'
+  const [captureType, setCaptureType] = useState('cctv');
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     getCurrentLocation();
@@ -128,7 +150,7 @@ export default function ImagesScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 0.9,
-        aspect: [16, 9], // Better for road analysis
+        aspect: [16, 9],
       });
     } else {
       result = await ImagePicker.launchImageLibraryAsync({
@@ -146,7 +168,7 @@ export default function ImagesScreen() {
       const optimized = await ImageManipulator.manipulateAsync(
         uri,
         [
-          { resize: { width: 1200, height: 675 } }, // 16:9 aspect ratio
+          { resize: { width: 1200, height: 675 } },
         ],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
@@ -186,15 +208,6 @@ export default function ImagesScreen() {
       formData.append('captureType', captureType);
       formData.append('timestamp', new Date().toISOString());
 
-      // TODO: Replace with actual backend endpoint
-      // const response = await fetch('https://your-backend-api.com/analyze-road', {
-      //   method: 'POST',
-      //   body: formData,
-      //   headers: {
-      //     'Content-Type': 'multipart/form-data',
-      //   },
-      // });
-
       // Simulate backend response
       await new Promise(resolve => setTimeout(resolve, 3000));
       
@@ -204,7 +217,7 @@ export default function ImagesScreen() {
         location: locationName,
         coordinates: location,
         imageUri: image.uri,
-        captureType: captureType, // Added missing property
+        captureType: captureType,
         analysis: {
           trafficLevel: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)],
           congestionScore: Math.floor(Math.random() * 100),
@@ -236,6 +249,32 @@ export default function ImagesScreen() {
     }
   };
 
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInMinutes = Math.floor((now - time) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Simulate refresh
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setRefreshing(false);
+  };
+
+  const loadMoreResults = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    // Simulate loading more data
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setLoadingMore(false);
+  };
+
   const getTrafficLevelColor = (level) => {
     switch (level.toLowerCase()) {
       case 'low': return colors.success;
@@ -255,36 +294,58 @@ export default function ImagesScreen() {
     }
   };
 
-  const renderAnalysisItem = ({ item }) => (
+  const renderAnalysisItem = ({ item, index }) => (
     <TouchableOpacity 
-      style={styles.analysisItem}
+      style={[styles.analysisItem, index === 0 && styles.firstAnalysisItem]}
       onPress={() => {
         setSelectedAnalysis(item);
         setShowAnalysisModal(true);
       }}
+      activeOpacity={0.7}
     >
+      {/* Header with location and time */}
       <View style={styles.analysisHeader}>
         <View style={styles.analysisLocation}>
-          <Ionicons name="location" size={16} color={colors.primary} />
-          <Text style={styles.analysisLocationText}>{item.location}</Text>
+          <View style={styles.locationIconContainer}>
+            <Ionicons name="location" size={16} color={colors.white} />
+          </View>
+          <Text style={styles.analysisLocationText} numberOfLines={1}>
+            {item.location}
+          </Text>
         </View>
-        <Text style={styles.analysisTime}>
-          {new Date(item.timestamp).toLocaleTimeString()}
-        </Text>
+        <View style={styles.timeContainer}>
+          <Text style={styles.analysisTime}>{formatTimeAgo(item.timestamp)}</Text>
+        </View>
       </View>
       
+      {/* Main metrics */}
       <View style={styles.analysisMetrics}>
         <View style={styles.metricItem}>
+          <View style={styles.metricIconContainer}>
+            <Ionicons name="car" size={16} color={colors.primary} />
+          </View>
           <Text style={styles.metricLabel}>Traffic</Text>
           <Text style={[styles.metricValue, { color: getTrafficLevelColor(item.analysis.trafficLevel) }]}>
             {item.analysis.trafficLevel}
           </Text>
         </View>
+        
+        <View style={styles.metricDivider} />
+        
         <View style={styles.metricItem}>
+          <View style={styles.metricIconContainer}>
+            <Ionicons name="trending-up" size={16} color={colors.warning} />
+          </View>
           <Text style={styles.metricLabel}>Congestion</Text>
           <Text style={styles.metricValue}>{item.analysis.congestionScore}%</Text>
         </View>
+        
+        <View style={styles.metricDivider} />
+        
         <View style={styles.metricItem}>
+          <View style={styles.metricIconContainer}>
+            <Ionicons name="road" size={16} color={colors.success} />
+          </View>
           <Text style={styles.metricLabel}>Road</Text>
           <Text style={[styles.metricValue, { color: getRoadConditionColor(item.analysis.roadCondition) }]}>
             {item.analysis.roadCondition}
@@ -292,20 +353,49 @@ export default function ImagesScreen() {
         </View>
       </View>
       
+      {/* Footer with badges */}
       <View style={styles.analysisFooter}>
-        <View style={styles.captureTypeBadge}>
-          <Ionicons 
-            name={(item.captureType || 'cctv') === 'drone' ? 'airplane' : 'videocam'} 
-            size={12} 
-            color={colors.white} 
-          />
-          <Text style={styles.captureTypeText}>{(item.captureType || 'cctv').toUpperCase()}</Text>
+        <View style={styles.badgeContainer}>
+          <View style={[styles.captureTypeBadge, { backgroundColor: item.captureType === 'drone' ? colors.warning : colors.primary }]}>
+            <Ionicons 
+              name={item.captureType === 'drone' ? 'airplane' : 'videocam'} 
+              size={12} 
+              color={colors.white} 
+            />
+            <Text style={styles.captureTypeText}>{item.captureType.toUpperCase()}</Text>
+          </View>
+          
+          <View style={[styles.statusBadge, { backgroundColor: colors.success }]}>
+            <Ionicons name="checkmark-circle" size={12} color={colors.white} />
+            <Text style={styles.statusText}>Completed</Text>
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: colors.success }]}>
-          <Text style={styles.statusText}>Completed</Text>
-        </View>
+        
+        <TouchableOpacity style={styles.viewDetailsButton}>
+          <Text style={styles.viewDetailsText}>View Details</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyStateIcon}>
+        <Ionicons name="analytics-outline" size={64} color={colors.textSecondary} />
+      </View>
+      <Text style={styles.emptyStateTitle}>No Analysis Yet</Text>
+      <Text style={styles.emptyStateSubtitle}>
+        Capture your first image to start analyzing traffic conditions
+      </Text>
+      <TouchableOpacity 
+        style={styles.emptyStateButton}
+        onPress={() => setShowCaptureModal(true)}
+      >
+        <Ionicons name="camera" size={20} color={colors.white} />
+        <Text style={styles.emptyStateButtonText}>Capture First Image</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -391,13 +481,36 @@ export default function ImagesScreen() {
 
       {/* Analysis Results */}
       <View style={styles.resultsSection}>
-        <Text style={styles.sectionTitle}>Recent Analysis</Text>
+        <View style={styles.resultsHeader}>
+          <Text style={styles.sectionTitle}>Recent Analysis</Text>
+          <Text style={styles.resultsCount}>{analysisResults.length} results</Text>
+        </View>
+        
         <FlatList
           data={analysisResults}
           renderItem={renderAnalysisItem}
           keyExtractor={item => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.resultsList}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          onEndReached={loadMoreResults}
+          onEndReachedThreshold={0.1}
+          ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.loadingMoreText}>Loading more...</Text>
+              </View>
+            ) : null
+          }
         />
       </View>
 
@@ -457,7 +570,7 @@ export default function ImagesScreen() {
             </View>
             
             {selectedAnalysis && (
-              <ScrollView style={styles.analysisDetails}>
+              <ScrollView style={styles.analysisDetails} showsVerticalScrollIndicator={false}>
                 <View style={styles.analysisLocationInfo}>
                   <Ionicons name="location" size={20} color={colors.primary} />
                   <Text style={styles.analysisLocationName}>{selectedAnalysis.location}</Text>
@@ -670,84 +783,198 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  resultsCount: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
   resultsList: {
     paddingBottom: 20,
   },
   analysisItem: {
     backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  firstAnalysisItem: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: colors.white,
   },
   analysisHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   analysisLocation: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  locationIconContainer: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 6,
+    marginRight: 8,
   },
   analysisLocationText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginLeft: 5,
+    flex: 1,
+  },
+  timeContainer: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   analysisTime: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
   analysisMetrics: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 8,
   },
   metricItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  metricIconContainer: {
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 6,
+    marginBottom: 6,
   },
   metricLabel: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginBottom: 5,
+    marginBottom: 4,
+    fontWeight: '500',
   },
   metricValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: colors.textPrimary,
+  },
+  metricDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.border,
   },
   analysisFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    gap: 8,
   },
   captureTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 15,
-    paddingVertical: 5,
+    borderRadius: 12,
+    paddingVertical: 6,
     paddingHorizontal: 10,
   },
   captureTypeText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginLeft: 5,
+    marginLeft: 4,
   },
   statusBadge: {
-    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 15,
+    borderRadius: 12,
   },
   statusText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  viewDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyStateIcon: {
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 24,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyStateButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  loadingMore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -831,7 +1058,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBackground,
     borderRadius: 12,
     padding: 15,
-    width: '48%', // Two columns
+    width: '48%',
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
