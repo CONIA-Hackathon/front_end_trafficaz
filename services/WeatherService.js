@@ -1,16 +1,23 @@
 import * as Location from 'expo-location';
+import { WEATHER_CONFIG } from '../config/weather';
 
 class WeatherService {
   constructor() {
-    this.apiKey = '140277fea3533f3cfb42e59df81e2f9c'; // Replace with your API key
-    this.baseUrl = 'https://api.openweathermap.org/data/2.5';
+    this.apiKey = WEATHER_CONFIG.API_KEY;
+    this.baseUrl = WEATHER_CONFIG.BASE_URL;
     this.cache = new Map();
-    this.cacheTimeout = 10 * 60 * 1000; // 
+    this.cacheTimeout = WEATHER_CONFIG.CACHE_TIMEOUT;
+    this.defaultLocation = WEATHER_CONFIG.DEFAULT_LOCATION;
   }
 
   // Set API key
   setApiKey(apiKey) {
     this.apiKey = apiKey;
+  }
+
+  // Check if API key is valid
+  isApiKeyValid() {
+    return this.apiKey && this.apiKey !== 'YOUR_OPENWEATHER_API_KEY_HERE' && this.apiKey.length > 0;
   }
 
   // Get current weather for a location
@@ -19,12 +26,22 @@ class WeatherService {
     const cached = this.getCachedData(cacheKey);
     if (cached) return cached;
 
+    // Check if API key is valid
+    if (!this.isApiKeyValid()) {
+      console.warn('⚠️ OpenWeather API key not configured. Using mock data.');
+      return this.getMockWeatherData();
+    }
+
     try {
       const response = await fetch(
         `${this.baseUrl}/weather?lat=${latitude}&lon=${longitude}&appid=${this.apiKey}&units=metric&lang=en`
       );
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.error('❌ Invalid OpenWeather API key. Please get a new key from https://openweathermap.org/api');
+          return this.getMockWeatherData();
+        }
         throw new Error(`Weather API error: ${response.status}`);
       }
 
@@ -35,7 +52,7 @@ class WeatherService {
       return weatherData;
     } catch (error) {
       console.error('Error fetching current weather:', error);
-      return this.getDefaultWeatherData();
+      return this.getMockWeatherData();
     }
   }
 
@@ -45,12 +62,22 @@ class WeatherService {
     const cached = this.getCachedData(cacheKey);
     if (cached) return cached;
 
+    // Check if API key is valid
+    if (!this.isApiKeyValid()) {
+      console.warn('⚠️ OpenWeather API key not configured. Using mock data.');
+      return this.getMockForecastData();
+    }
+
     try {
       const response = await fetch(
         `${this.baseUrl}/forecast?lat=${latitude}&lon=${longitude}&appid=${this.apiKey}&units=metric&lang=en`
       );
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.error('❌ Invalid OpenWeather API key. Please get a new key from https://openweathermap.org/api');
+          return this.getMockForecastData();
+        }
         throw new Error(`Weather API error: ${response.status}`);
       }
 
@@ -61,7 +88,7 @@ class WeatherService {
       return forecastData;
     } catch (error) {
       console.error('Error fetching weather forecast:', error);
-      return this.getDefaultForecastData();
+      return this.getMockForecastData();
     }
   }
 
@@ -70,7 +97,8 @@ class WeatherService {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        throw new Error('Location permission denied');
+        console.warn('⚠️ Location permission denied. Using default location (Yaoundé, Cameroon).');
+        return this.getWeatherForDefaultLocation();
       }
 
       const location = await Location.getCurrentPositionAsync({
@@ -91,12 +119,25 @@ class WeatherService {
       };
     } catch (error) {
       console.error('Error getting location weather:', error);
-      return {
-        current: this.getDefaultWeatherData(),
-        forecast: this.getDefaultForecastData(),
-        location: null
-      };
+      return this.getWeatherForDefaultLocation();
     }
+  }
+
+  // Get weather for default location (Yaoundé, Cameroon)
+  async getWeatherForDefaultLocation() {
+    const defaultLat = 3.848033;
+    const defaultLng = 11.502075;
+    
+    const [currentWeather, forecast] = await Promise.all([
+      this.getCurrentWeather(defaultLat, defaultLng),
+      this.getWeatherForecast(defaultLat, defaultLng)
+    ]);
+
+    return {
+      current: currentWeather,
+      forecast: forecast,
+      location: { latitude: defaultLat, longitude: defaultLng }
+    };
   }
 
   // Format current weather data
@@ -390,6 +431,79 @@ class WeatherService {
       '50n': '#6B7280'
     };
     return colorMap[iconCode] || '#6B7280';
+  }
+
+  // Mock weather data for fallback
+  getMockWeatherData() {
+    return {
+      temperature: 28,
+      feelsLike: 30,
+      humidity: 75,
+      pressure: 1013,
+      windSpeed: 12,
+      windDirection: 180,
+      description: 'Partly cloudy',
+      icon: '02d',
+      main: 'Clouds',
+      visibility: 10,
+      sunrise: new Date(),
+      sunset: new Date(),
+      timestamp: new Date(),
+      trafficImpact: { 
+        level: 'low', 
+        reasons: ['Good weather conditions'], 
+        delayMinutes: 5 
+      },
+      recommendations: [
+        'Normal driving conditions',
+        'Maintain regular speed limits',
+        'Keep safe following distance'
+      ]
+    };
+  }
+
+  // Mock forecast data for fallback
+  getMockForecastData() {
+    const now = new Date();
+    const hourlyForecast = [];
+    
+    // Generate mock hourly forecast
+    for (let i = 0; i < 8; i++) {
+      const time = new Date(now.getTime() + i * 60 * 60 * 1000);
+      hourlyForecast.push({
+        time: time,
+        temperature: 25 + Math.floor(Math.random() * 8),
+        humidity: 60 + Math.floor(Math.random() * 20),
+        description: 'Partly cloudy',
+        icon: '02d',
+        main: 'Clouds',
+        windSpeed: 8 + Math.floor(Math.random() * 8),
+        rainChance: Math.floor(Math.random() * 30),
+        trafficImpact: { level: 'low', reasons: [], delayMinutes: 5 }
+      });
+    }
+
+    // Generate mock daily forecast
+    const dailyForecast = [];
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      dailyForecast.push({
+        date: date,
+        avgTemperature: 26 + Math.floor(Math.random() * 6),
+        maxTemperature: 28 + Math.floor(Math.random() * 8),
+        minTemperature: 22 + Math.floor(Math.random() * 6),
+        description: 'Partly cloudy',
+        icon: '02d',
+        rainChance: Math.floor(Math.random() * 40),
+        trafficImpact: { level: 'low', reasons: [], delayMinutes: 5 }
+      });
+    }
+
+    return {
+      hourly: hourlyForecast,
+      daily: dailyForecast,
+      summary: 'Partly cloudy conditions expected with occasional sunshine. Traffic impact is minimal.'
+    };
   }
 }
 

@@ -3,7 +3,9 @@
 
 export const WEATHER_CONFIG = {
   // Replace with your OpenWeather API key
-  API_KEY: '140277fea3533f3cfb42e59df81e2f9c',
+  API_KEY: 'ee3c20074157f394edd999aeb8af0afa',
+
+  // API_KEY: '140277fea3533f3cfb42e59df81e2f9c',
   
   // Default location (Yaoundé, Cameroon)
   DEFAULT_LOCATION: {
