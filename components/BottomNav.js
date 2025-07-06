@@ -12,31 +12,11 @@ const BottomNav = () => {
   const insets = useSafeAreaInsets();
 
   const tabs = [
-    {
-      label: 'Home',
-      icon: 'home-outline',
-      path: '/'
-    },
-    {
-      label: 'Map',
-      icon: 'map-outline',
-      path: '/Map'
-    },
-    {
-      label: 'Weather',
-      icon: 'partly-sunny-outline',
-      path: '/Weather'
-    },
-    {
-      label: 'Alerts',
-      icon: 'notifications-outline',
-      path: '/Alert'
-    },
-    {
-      label: 'Profile',
-      icon: 'person-outline',
-      path: '/Profile'
-    }
+    { label: 'Home', icon: 'home-outline', path: '/Home' },
+    { label: 'Map', icon: 'map-outline', path: '/Map' },
+    { label: 'Image', icon: 'image-outline', path: '/ImagesView' },
+    { label: 'Alerts', icon: 'notifications-outline', path: '/Alert' },
+    { label: 'Me', icon: 'person-outline', path: '/Profile' }
   ];
 
   // Calculate dynamic height based on device

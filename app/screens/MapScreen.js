@@ -7,6 +7,9 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  TextInput,
+  FlatList,
+  Keyboard,
   Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +17,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import locationService from '../../services/locationService';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,14 +26,17 @@ const MapScreen = () => {
   const [errorMsg, setErrorMsg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState({
-    latitude: 3.848033, // Default to Yaoundé, Cameroon
+    latitude: 3.848033,
     longitude: 11.502075,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [fieldFocus, setFieldFocus] = useState(null);
   const mapRef = useRef(null);
 
-  // Sample traffic data - in real app, this would come from your backend
   const trafficMarkers = [
     {
       id: '1',
@@ -59,68 +66,60 @@ const MapScreen = () => {
 
   useEffect(() => {
     initializeLocation();
-    
-    // Cleanup location updates on unmount
-    return () => {
-      locationService.stopLocationUpdates();
-    };
+    return () => locationService.stopLocationUpdates();
   }, []);
 
   const initializeLocation = async () => {
     try {
       setLoading(true);
       setErrorMsg(null);
-
-      // Check if location services are enabled
       const locationEnabled = await locationService.isLocationEnabled();
       if (!locationEnabled) {
-        setErrorMsg('Please enable location services in your device settings');
+        setErrorMsg('Please enable location services.');
         setLoading(false);
         return;
       }
-
-      // Get current location
       const currentLocation = await locationService.getCurrentLocation();
       setLocation(currentLocation);
-      
-      // Set map region to user's location
       const newRegion = locationService.getMapRegion(
         currentLocation.coords.latitude,
         currentLocation.coords.longitude
       );
       setRegion(newRegion);
-
-      console.log('Map initialized with user location:', {
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude
-      });
-
     } catch (error) {
-      console.error('Error initializing location:', error);
-      setErrorMsg('Could not get your current location. Please check your permissions.');
+      console.error(error);
+      setErrorMsg('Location permissions not granted.');
     } finally {
       setLoading(false);
     }
   };
 
+  const searchLocation = async (text) => {
+    if (!text) return;
+    const results = await Location.geocodeAsync(text);
+    setSuggestions(results);
+  };
+
+  const handleSelectLocation = (locationObj) => {
+    const label = `${locationObj.name || ''} ${locationObj.street || ''} ${locationObj.city || ''}`.trim();
+    const coords = {
+      latitude: locationObj.latitude,
+      longitude: locationObj.longitude
+    };
+    if (fieldFocus === 'start') setStart(label);
+    else setEnd(label);
+    setRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+    mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 1000);
+    setSuggestions([]);
+    Keyboard.dismiss();
+  };
+
   const centerOnUserLocation = async () => {
-    try {
-      if (location) {
-        const newRegion = locationService.getMapRegion(
-          location.coords.latitude,
-          location.coords.longitude
-        );
-        
-        setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 1000);
-      } else {
-        // If no location, try to get it again
-        await initializeLocation();
-      }
-    } catch (error) {
-      console.error('Error centering on user location:', error);
-      Alert.alert('Error', 'Could not center on your location');
-    }
+    if (location) {
+      const newRegion = locationService.getMapRegion(location.coords.latitude, location.coords.longitude);
+      setRegion(newRegion);
+      mapRef.current?.animateToRegion(newRegion, 1000);
+    } else await initializeLocation();
   };
 
   const getMarkerIcon = (type, severity) => {
@@ -130,7 +129,6 @@ const MapScreen = () => {
       construction: 'construct',
       roadwork: 'construct-outline'
     };
-    
     return iconMap[type] || 'alert-circle';
   };
 
@@ -140,16 +138,11 @@ const MapScreen = () => {
       medium: colors.warning,
       low: colors.info
     };
-    
     return colorMap[severity] || colors.secondary;
   };
 
   const handleReportTraffic = () => {
-    Alert.alert(
-      'Report Traffic',
-      'This feature will allow you to report traffic incidents. Coming soon!',
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Report Traffic', 'Feature coming soon!', [{ text: 'OK' }]);
   };
 
   if (loading) {
@@ -165,21 +158,51 @@ const MapScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Traffic Map</Text>
           <Text style={styles.headerSubtitle}>Real-time traffic alerts</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.locationButton}
-          onPress={centerOnUserLocation}
-        >
+        <TouchableOpacity style={styles.locationButton} onPress={centerOnUserLocation}>
           <Ionicons name="locate" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
-      {/* Map */}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Start location"
+          value={start}
+          onFocus={() => setFieldFocus('start')}
+          onChangeText={(text) => {
+            setStart(text);
+            searchLocation(text);
+          }}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="End location"
+          value={end}
+          onFocus={() => setFieldFocus('end')}
+          onChangeText={(text) => {
+            setEnd(text);
+            searchLocation(text);
+          }}
+        />
+        {suggestions.length > 0 && (
+          <FlatList
+            style={styles.suggestionList}
+            data={suggestions}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity onPress={() => handleSelectLocation(item)} style={styles.suggestionItem}>
+                <Text>{item.name || item.street || `${item.latitude}, ${item.longitude}`}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        )}
+      </View>
+
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -192,7 +215,6 @@ const MapScreen = () => {
         showsTraffic={true}
         onRegionChangeComplete={setRegion}
       >
-        {/* User location marker */}
         {location && (
           <Marker
             coordinate={{
@@ -209,7 +231,6 @@ const MapScreen = () => {
           </Marker>
         )}
 
-        {/* Traffic markers */}
         {trafficMarkers.map((marker) => (
           <Marker
             key={marker.id}
@@ -218,17 +239,16 @@ const MapScreen = () => {
             description={marker.description}
           >
             <View style={[styles.trafficMarker, { backgroundColor: getMarkerColor(marker.severity) }]}>
-              <Ionicons 
-                name={getMarkerIcon(marker.type, marker.severity)} 
-                size={16} 
-                color={colors.white} 
+              <Ionicons
+                name={getMarkerIcon(marker.type, marker.severity)}
+                size={16}
+                color={colors.white}
               />
             </View>
           </Marker>
         ))}
       </MapView>
 
-      {/* Bottom Info Panel */}
       <View style={styles.infoPanel}>
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
@@ -244,14 +264,13 @@ const MapScreen = () => {
             <Text style={styles.legendText}>Low</Text>
           </View>
         </View>
-        
+
         <TouchableOpacity style={styles.reportButton} onPress={handleReportTraffic}>
           <Ionicons name="add-circle" size={20} color={colors.white} />
           <Text style={styles.reportButtonText}>Report Traffic</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Error Message */}
       {errorMsg && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{errorMsg}</Text>
@@ -309,11 +328,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  inputContainer: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    zIndex: 999,
+  },
+  input: {
+    backgroundColor: colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  suggestionList: {
+    backgroundColor: colors.white,
+    maxHeight: 150,
+  },
+  suggestionItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   map: {
     flex: 1,
@@ -347,11 +386,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
   infoPanel: {
     backgroundColor: colors.white,
@@ -419,4 +453,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MapScreen; 
+export default MapScreen;
