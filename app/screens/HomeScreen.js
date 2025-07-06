@@ -58,6 +58,47 @@ const HomeScreen = () => {
     }
   ];
 
+  // Calculate stats from scheduled routes
+  const activeRoutes = scheduledRoutes.filter(route => route.isActive).length;
+  const totalRoutes = scheduledRoutes.length;
+  const todayAlerts = 3; // Mock data
+
+  // Mock recent activity based on scheduled routes
+  const recentActivity = [
+    {
+      id: '1',
+      type: 'route_check',
+      icon: 'checkmark-circle',
+      color: colors.success,
+      text: 'Home to School route checked - Medium traffic',
+      time: '2 hours ago'
+    },
+    {
+      id: '2',
+      type: 'traffic_alert',
+      icon: 'alert',
+      color: colors.warning,
+      text: 'High traffic detected on Work Commute route',
+      time: '1 hour ago'
+    },
+    {
+      id: '3',
+      type: 'route_added',
+      icon: 'add-circle',
+      color: colors.primary,
+      text: 'New route "Weekend Shopping" scheduled',
+      time: '3 days ago'
+    },
+    {
+      id: '4',
+      type: 'route_updated',
+      icon: 'pencil',
+      color: colors.info,
+      text: 'Work Commute time updated to 8:30 AM',
+      time: '1 week ago'
+    }
+  ];
+
   // Handle long names by truncating if needed
   const getDisplayName = (name) => {
     if (!name) return 'User';
@@ -82,6 +123,18 @@ const HomeScreen = () => {
 
   const navigateToScheduledRoutes = () => {
     router.push('/ScheduledRoutes');
+  };
+
+  const navigateToMap = () => {
+    router.push('/Map');
+  };
+
+  const navigateToAlerts = () => {
+    router.push('/Alert');
+  };
+
+  const navigateToProfile = () => {
+    router.push('/Profile');
   };
 
   return (
@@ -123,10 +176,10 @@ const HomeScreen = () => {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <View style={styles.statIcon}>
-              <Ionicons name="car" size={20} color={colors.primary} />
+              <Ionicons name="time" size={20} color={colors.primary} />
             </View>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>12</Text>
+              <Text style={styles.statNumber}>{activeRoutes}</Text>
               <Text style={styles.statLabel}>Active Routes</Text>
             </View>
           </View>
@@ -136,7 +189,7 @@ const HomeScreen = () => {
               <Ionicons name="alert-circle" size={20} color={colors.warning} />
             </View>
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>{todayAlerts}</Text>
               <Text style={styles.statLabel}>Alerts Today</Text>
             </View>
           </View>
@@ -224,16 +277,19 @@ const HomeScreen = () => {
           </View>
           
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={navigateToScheduledRoutes}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="add-circle" size={24} color={colors.primary} />
               </View>
-              <Text style={styles.actionText}>{t('reportTraffic')}</Text>
+              <Text style={styles.actionText}>Add Route</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push('/Map')}
+              onPress={navigateToMap}
             >
               <View style={styles.actionIcon}>
                 <Ionicons name="map" size={24} color={colors.info} />
@@ -241,18 +297,24 @@ const HomeScreen = () => {
               <Text style={styles.actionText}>{t('viewMap')}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={navigateToAlerts}
+            >
               <View style={styles.actionIcon}>
-                <Ionicons name="settings" size={24} color={colors.secondary} />
+                <Ionicons name="notifications" size={24} color={colors.warning} />
               </View>
-              <Text style={styles.actionText}>Settings</Text>
+              <Text style={styles.actionText}>View Alerts</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={navigateToProfile}
+            >
               <View style={styles.actionIcon}>
-                <Ionicons name="help-circle" size={24} color={colors.warning} />
+                <Ionicons name="person" size={24} color={colors.secondary} />
               </View>
-              <Text style={styles.actionText}>Help</Text>
+              <Text style={styles.actionText}>Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -265,25 +327,17 @@ const HomeScreen = () => {
           </View>
           
           <View style={styles.activityList}>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+            {recentActivity.map((activity) => (
+              <View key={activity.id} style={styles.activityItem}>
+                <View style={[styles.activityIcon, { backgroundColor: activity.color + '15' }]}>
+                  <Ionicons name={activity.icon} size={16} color={activity.color} />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityText}>{activity.text}</Text>
+                  <Text style={styles.activityTime}>{activity.time}</Text>
+                </View>
               </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Route saved successfully</Text>
-                <Text style={styles.activityTime}>2 minutes ago</Text>
-              </View>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="alert" size={16} color={colors.warning} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Traffic alert received</Text>
-                <Text style={styles.activityTime}>15 minutes ago</Text>
-              </View>
-            </View>
+            ))}
           </View>
         </View>
       </ScrollView>
