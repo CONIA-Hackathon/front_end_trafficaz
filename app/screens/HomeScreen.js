@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Button from '../../components/Button';
 import AlertCard from '../../components/AlertCard';
 import Toggle from '../../components/Toggle';
@@ -12,12 +13,50 @@ import { useLanguage } from '../../context/LanguageContext';
 const HomeScreen = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const router = useRouter();
   
   const sampleAlert = {
     title: 'Heavy Traffic Ahead',
     description: 'Congestion reported on Main St. Expect delays.',
     time:'2:30pm'
   };
+
+  // Mock scheduled routes data
+  const scheduledRoutes = [
+    {
+      id: '1',
+      name: 'Home to School',
+      startLocation: 'Home',
+      endLocation: 'University of Yaoundé',
+      time: '07:00',
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      isActive: true,
+      lastCheck: '2 hours ago',
+      trafficLevel: 'Medium'
+    },
+    {
+      id: '2',
+      name: 'Work Commute',
+      startLocation: 'Home',
+      endLocation: 'Central Business District',
+      time: '08:30',
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      isActive: true,
+      lastCheck: '1 hour ago',
+      trafficLevel: 'High'
+    },
+    {
+      id: '3',
+      name: 'Weekend Shopping',
+      startLocation: 'Home',
+      endLocation: 'Central Market',
+      time: '10:00',
+      days: ['Sat'],
+      isActive: false,
+      lastCheck: '3 days ago',
+      trafficLevel: 'Low'
+    }
+  ];
 
   // Handle long names by truncating if needed
   const getDisplayName = (name) => {
@@ -30,6 +69,19 @@ const HomeScreen = () => {
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
+  };
+
+  const getTrafficLevelColor = (level) => {
+    switch (level.toLowerCase()) {
+      case 'high': return colors.danger;
+      case 'medium': return colors.warning;
+      case 'low': return colors.success;
+      default: return colors.textSecondary;
+    }
+  };
+
+  const navigateToScheduledRoutes = () => {
+    router.push('/ScheduledRoutes');
   };
 
   return (
@@ -90,6 +142,71 @@ const HomeScreen = () => {
           </View>
         </View>
 
+        {/* Scheduled Routes Section */}
+        <View style={styles.scheduledRoutesSection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time" size={20} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>Scheduled Routes</Text>
+            <TouchableOpacity onPress={navigateToScheduledRoutes}>
+              <Ionicons name="add-circle" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.scheduledRoutesList}>
+            {scheduledRoutes.slice(0, 2).map((route) => (
+              <View key={route.id} style={styles.scheduledRouteCard}>
+                <View style={styles.routeHeader}>
+                  <View style={styles.routeInfo}>
+                    <Text style={styles.routeName}>{route.name}</Text>
+                    <Text style={styles.routeLocation}>
+                      {route.startLocation} → {route.endLocation}
+                    </Text>
+                  </View>
+                  <View style={styles.routeStatus}>
+                    <View style={[
+                      styles.statusDot, 
+                      { backgroundColor: route.isActive ? colors.success : colors.textSecondary }
+                    ]} />
+                    <Text style={styles.statusText}>
+                      {route.isActive ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.routeDetails}>
+                  <View style={styles.routeTime}>
+                    <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                    <Text style={styles.timeText}>{route.time}</Text>
+                    <Text style={styles.daysText}>{route.days.join(', ')}</Text>
+                  </View>
+                  
+                  <View style={styles.routeTraffic}>
+                    <Text style={styles.trafficLabel}>Last Check:</Text>
+                    <Text style={styles.trafficValue}>{route.lastCheck}</Text>
+                    <View style={styles.trafficLevel}>
+                      <View style={[
+                        styles.trafficDot, 
+                        { backgroundColor: getTrafficLevelColor(route.trafficLevel) }
+                      ]} />
+                      <Text style={styles.trafficLevelText}>{route.trafficLevel}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+            
+            {scheduledRoutes.length > 2 && (
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={navigateToScheduledRoutes}
+              >
+                <Text style={styles.viewAllText}>View All ({scheduledRoutes.length})</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Latest Alert */}
         <View style={styles.alertSection}>
           <View style={styles.sectionHeader}>
@@ -114,7 +231,10 @@ const HomeScreen = () => {
               <Text style={styles.actionText}>{t('reportTraffic')}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/Map')}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="map" size={24} color={colors.info} />
               </View>
@@ -124,7 +244,7 @@ const HomeScreen = () => {
             <TouchableOpacity style={styles.actionCard}>
               <View style={styles.actionIcon}>
                 <Ionicons name="settings" size={24} color={colors.secondary} />
-    </View>
+              </View>
               <Text style={styles.actionText}>Settings</Text>
             </TouchableOpacity>
             
@@ -381,6 +501,126 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  scheduledRoutesSection: {
+    marginBottom: 24,
+  },
+  scheduledRoutesList: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scheduledRouteCard: {
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  routeInfo: {
+    flex: 1,
+  },
+  routeName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  routeLocation: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  routeStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  routeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  routeTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginLeft: 4,
+  },
+  daysText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 4,
+  },
+  routeTraffic: {
+    alignItems: 'flex-end',
+  },
+  trafficLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  trafficValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  trafficLevel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trafficDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  trafficLevelText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: colors.primary + '05',
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primary,
   },
 });
 
