@@ -92,7 +92,6 @@ export default function RouteSetupScreen() {
   useEffect(() => {
     initializeMap();
     fetchBackendData();
-    startLocationTracking();
     startPulseAnimation();
     
     // Cleanup subscription on unmount
@@ -141,25 +140,108 @@ export default function RouteSetupScreen() {
     try {
       setLoading(true);
       
-      // Get user's current location
-      const currentLocation = await locationService.getCurrentLocation();
-      setUserLocation(currentLocation);
-      
-      // Set map region to user's location
-      const newRegion = locationService.getMapRegion(
-        currentLocation.coords.latitude,
-        currentLocation.coords.longitude
-      );
-      setRegion(newRegion);
-      
-      console.log('User location set:', {
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude
-      });
+      // First, request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Location permission denied');
+        Alert.alert(
+          'Location Permission Required',
+          'This app needs location permission to show your current location and provide traffic information. Please enable location services in your device settings.',
+          [
+            { text: 'OK', onPress: () => {} }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Check if location services are enabled
+      const locationEnabled = await Location.hasServicesEnabledAsync();
+      if (!locationEnabled) {
+        console.log('Location services disabled');
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services in your device settings to use this feature.',
+          [
+            { text: 'OK', onPress: () => {} }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Get user's current location with error handling
+      try {
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          maximumAge: 10000, // Accept cached location up to 10 seconds old
+          timeout: 15000, // Timeout after 15 seconds
+        });
+
+        setUserLocation(currentLocation);
+        
+        // Set map region to user's location
+        const newRegion = {
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        
+        console.log('User location set:', {
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude
+        });
+
+        // Start location tracking after getting initial location
+        startLocationTracking();
+        
+      } catch (locationError) {
+        console.error('Error getting current location:', locationError);
+        
+        // Fallback to using locationService if available
+        try {
+          const currentLocation = await locationService.getCurrentLocation();
+          setUserLocation(currentLocation);
+          
+          const newRegion = locationService.getMapRegion(
+            currentLocation.coords.latitude,
+            currentLocation.coords.longitude
+          );
+          setRegion(newRegion);
+          
+          console.log('User location set via locationService:', {
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude
+          });
+
+          // Start location tracking after getting initial location
+          startLocationTracking();
+          
+        } catch (serviceError) {
+          console.error('Error getting location via service:', serviceError);
+          Alert.alert(
+            'Location Error',
+            'Unable to get your current location. Please make sure location services are enabled and try again.',
+            [
+              { text: 'Retry', onPress: initializeMap },
+              { text: 'Cancel', onPress: () => {} }
+            ]
+          );
+        }
+      }
       
     } catch (error) {
-      console.error('Error getting user location:', error);
-      Alert.alert('Location Error', 'Could not get your current location');
+      console.error('Error initializing map:', error);
+      Alert.alert(
+        'Map Initialization Error',
+        'There was an error setting up the map. Please try again.',
+        [
+          { text: 'Retry', onPress: initializeMap },
+          { text: 'Cancel', onPress: () => {} }
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -167,10 +249,23 @@ export default function RouteSetupScreen() {
 
   const startLocationTracking = async () => {
     try {
-      // Request location permissions
+      // Check permissions again
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Location permission is required for traffic tracking');
+        return;
+      }
+
+      // Check if location services are enabled
+      const locationEnabled = await Location.hasServicesEnabledAsync();
+      if (!locationEnabled) {
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services to start tracking.',
+          [
+            { text: 'OK', onPress: () => {} }
+          ]
+        );
         return;
       }
 
@@ -192,7 +287,14 @@ export default function RouteSetupScreen() {
       
     } catch (error) {
       console.error('Error starting location tracking:', error);
-      Alert.alert('Tracking Error', 'Could not start location tracking');
+      Alert.alert(
+        'Tracking Error',
+        'Could not start location tracking. Please check your location settings.',
+        [
+          { text: 'Retry', onPress: startLocationTracking },
+          { text: 'Cancel', onPress: () => {} }
+        ]
+      );
     }
   };
 
@@ -433,10 +535,12 @@ export default function RouteSetupScreen() {
 
   const centerOnUserLocation = () => {
     if (userLocation) {
-      const newRegion = locationService.getMapRegion(
-        userLocation.coords.latitude,
-        userLocation.coords.longitude
-      );
+      const newRegion = {
+        latitude: userLocation.coords.latitude,
+        longitude: userLocation.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
       setRegion(newRegion);
       mapRef.current?.animateToRegion(newRegion, 1000);
     } else {
@@ -677,17 +781,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   locationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: colors.primary,
+    padding: 10,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   speedIndicator: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: colors.white,
@@ -700,49 +803,52 @@ const styles = StyleSheet.create({
   },
   trackingStatusContainer: {
     position: 'relative',
-    alignItems: 'center',
+    marginRight: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   trackingGlow: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.success + '40',
-    borderWidth: 1,
-    borderColor: colors.success + '60',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.success,
+    opacity: 0.3,
   },
   trackingGlow2: {
     position: 'absolute',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.success + '20',
-    borderWidth: 1,
-    borderColor: colors.success + '40',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.success,
+    opacity: 0.1,
   },
   speedText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginLeft: 8,
   },
   trackingButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   trackingButtonText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   map: {
     flex: 1,
   },
   userLocationMarker: {
-    alignItems: 'center',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
   userLocationDot: {
     width: 12,
@@ -754,38 +860,28 @@ const styles = StyleSheet.create({
   },
   userLocationPulse: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.primary + '30',
-    borderWidth: 1,
-    borderColor: colors.primary + '50',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    opacity: 0.2,
   },
-  userDot: {
+  trafficDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.secondary,
-    borderWidth: 1,
-    borderColor: colors.white,
-  },
-  trafficDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
     backgroundColor: colors.danger,
-    borderWidth: 2,
-    borderColor: colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 3,
+  },
+  userDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.textSecondary,
   },
   infoPanel: {
     backgroundColor: colors.white,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -802,10 +898,9 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginLeft: 8,
+    marginLeft: 4,
   },
   trackingSummary: {
-    alignItems: 'center',
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -815,36 +910,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  trafficInfo: {
-    alignItems: 'center',
-  },
-  trafficText: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  trafficSubtext: {
-    fontSize: 10,
-    color: colors.textSecondary,
-  },
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
-    width: '90%',
     backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 24,
-    elevation: 10,
+    borderRadius: 20,
+    padding: 20,
+    width: width - 40,
+    maxHeight: height * 0.7,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modalTitle: {
     fontSize: 20,
@@ -852,28 +943,29 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   modalSubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 16,
   },
   modalInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
     backgroundColor: colors.background,
+    marginBottom: 20,
   },
   searchButton: {
     backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   searchButtonText: {
     color: colors.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
