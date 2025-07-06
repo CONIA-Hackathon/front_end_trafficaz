@@ -11,7 +11,9 @@ import {
   Text,
   ActivityIndicator,
   Alert,
-  Animated
+  Animated,
+  FlatList,
+  ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
@@ -22,6 +24,30 @@ import locationService from '../../services/locationService';
 import trafficService from '../../services/trafficService';
 
 const { width, height } = Dimensions.get('window');
+
+// Popular locations in Cameroon
+const POPULAR_LOCATIONS = [
+  { name: 'Yaoundé Central Market', address: 'Yaoundé, Cameroon', type: 'market' },
+  { name: 'Douala International Airport', address: 'Douala, Cameroon', type: 'airport' },
+  { name: 'Yaoundé Nsimalen Airport', address: 'Yaoundé, Cameroon', type: 'airport' },
+  { name: 'University of Yaoundé I', address: 'Yaoundé, Cameroon', type: 'university' },
+  { name: 'Douala Port', address: 'Douala, Cameroon', type: 'port' },
+  { name: 'Bamenda City', address: 'Bamenda, Cameroon', type: 'city' },
+  { name: 'Buea City', address: 'Buea, Cameroon', type: 'city' },
+  { name: 'Garoua City', address: 'Garoua, Cameroon', type: 'city' },
+  { name: 'Maroua City', address: 'Maroua, Cameroon', type: 'city' },
+  { name: 'Kribi Beach', address: 'Kribi, Cameroon', type: 'beach' },
+  { name: 'Limbe Beach', address: 'Limbe, Cameroon', type: 'beach' },
+  { name: 'Mount Cameroon', address: 'Buea, Cameroon', type: 'mountain' },
+  { name: 'Waza National Park', address: 'Waza, Cameroon', type: 'park' },
+  { name: 'Korup National Park', address: 'Korup, Cameroon', type: 'park' },
+  { name: 'Cameroon Baptist Convention', address: 'Bamenda, Cameroon', type: 'church' },
+  { name: 'St. Joseph Cathedral', address: 'Yaoundé, Cameroon', type: 'church' },
+  { name: 'Douala Central Market', address: 'Douala, Cameroon', type: 'market' },
+  { name: 'Bamenda Market', address: 'Bamenda, Cameroon', type: 'market' },
+  { name: 'Buea Market', address: 'Buea, Cameroon', type: 'market' },
+  { name: 'Garoua Market', address: 'Garoua, Cameroon', type: 'market' },
+];
 
 export default function RouteSetupScreen() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -46,6 +72,14 @@ export default function RouteSetupScreen() {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const pulseAnim2 = useRef(new Animated.Value(0.1)).current;
   const mapRef = useRef(null);
+  
+  // New state for enhanced search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchingLocation, setSearchingLocation] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
 
   // Sample backend data - replace with actual API calls
   const sampleBackendUsers = [
@@ -455,22 +489,43 @@ export default function RouteSetupScreen() {
 
   const handleRouteSearch = async () => {
     try {
-      const startResult = await geocodeLocation(startLocation, country);
-      const endResult = await geocodeLocation(endLocation, country);
+      // Use user's current location as start point
+      let startPoint = null;
+      let endPoint = null;
 
-      if (startResult && endResult) {
-        const startPoint = {
-          latitude: startResult.latitude,
-          longitude: startResult.longitude,
+      if (userLocation) {
+        startPoint = {
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
         };
-        const endPoint = {
-          latitude: endResult.latitude,
-          longitude: endResult.longitude,
-        };
-
         setStartCoords(startPoint);
-        setEndCoords(endPoint);
+      } else {
+        Alert.alert('Error', 'Could not get your current location. Please make sure location services are enabled.');
+        return;
+      }
 
+      // Use the selected end location
+      if (endCoords) {
+        endPoint = endCoords;
+      } else if (endLocation) {
+        // Try to geocode the end location
+        const endResult = await geocodeLocation(endLocation, country);
+        if (endResult) {
+          endPoint = {
+            latitude: endResult.latitude,
+            longitude: endResult.longitude,
+          };
+          setEndCoords(endPoint);
+        } else {
+          Alert.alert('Error', 'Could not find coordinates for the destination.');
+          return;
+        }
+      } else {
+        Alert.alert('Error', 'Please select a destination.');
+        return;
+      }
+
+      if (startPoint && endPoint) {
         // Check traffic along the route
         console.log('🛣️ Checking traffic for route:', {
           start: startPoint,
@@ -506,15 +561,14 @@ export default function RouteSetupScreen() {
         const newRegion = getRegionFromPoints([startPoint, endPoint]);
         setRegion(newRegion);
         mapRef.current?.animateToRegion(newRegion, 1000);
-      } else {
-        Alert.alert('Error', 'Could not find coordinates for start or end location.');
+        
+        // Close modal after successful route setup
+        setModalVisible(false);
       }
     } catch (error) {
       console.error('Error checking route traffic:', error);
       Alert.alert('Error', 'Could not analyze traffic for this route.');
     }
-
-    setModalVisible(false);
   };
 
   // Calculate distance between two points in meters
@@ -545,6 +599,136 @@ export default function RouteSetupScreen() {
       mapRef.current?.animateToRegion(newRegion, 1000);
     } else {
       initializeMap();
+    }
+  };
+
+  // Enhanced search functions
+  const getLocationIcon = (type) => {
+    switch (type) {
+      case 'airport': return 'airplane';
+      case 'market': return 'cart';
+      case 'university': return 'school';
+      case 'port': return 'boat';
+      case 'city': return 'business';
+      case 'beach': return 'umbrella';
+      case 'mountain': return 'triangle';
+      case 'park': return 'leaf';
+      case 'church': return 'church';
+      default: return 'location';
+    }
+  };
+
+  const searchLocations = async (query) => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    try {
+      // Filter popular locations
+      const filteredPopular = POPULAR_LOCATIONS.filter(location =>
+        location.name.toLowerCase().includes(query.toLowerCase()) ||
+        location.address.toLowerCase().includes(query.toLowerCase())
+      );
+
+      // Get geocoding results
+      const geocodeResults = await Location.geocodeAsync(`${query}, Cameroon`);
+      
+      // Combine results
+      const allResults = [
+        ...filteredPopular.map(location => ({
+          ...location,
+          isPopular: true,
+          coordinates: null // Will be geocoded when selected
+        })),
+        ...geocodeResults.map((result, index) => ({
+          name: `${query} (${index + 1})`,
+          address: `${query}, Cameroon`,
+          type: 'location',
+          isPopular: false,
+          coordinates: {
+            latitude: result.latitude,
+            longitude: result.longitude
+          }
+        }))
+      ];
+
+      setSuggestions(allResults);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error('Error searching locations:', error);
+      // Fallback to popular locations only
+      const filteredPopular = POPULAR_LOCATIONS.filter(location =>
+        location.name.toLowerCase().includes(query.toLowerCase()) ||
+        location.address.toLowerCase().includes(query.toLowerCase())
+      );
+      setSuggestions(filteredPopular.map(location => ({
+        ...location,
+        isPopular: true,
+        coordinates: null
+      })));
+      setShowSuggestions(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleLocationSelect = async (location) => {
+    setSearchingLocation(location.name);
+    setShowSuggestions(false);
+    
+    try {
+      let coordinates = location.coordinates;
+      
+      // If no coordinates, geocode the location
+      if (!coordinates) {
+        const geocodeResults = await Location.geocodeAsync(`${location.name}, ${location.address}`);
+        if (geocodeResults.length > 0) {
+          coordinates = {
+            latitude: geocodeResults[0].latitude,
+            longitude: geocodeResults[0].longitude
+          };
+        }
+      }
+      
+      if (coordinates) {
+        // Set as end location
+        setEndLocation(location.name);
+        
+        // Update map to show the selected location
+        const newRegion = {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 1000);
+        
+        // Set end coordinates for route planning
+        setEndCoords(coordinates);
+        
+        console.log('📍 Selected location:', {
+          name: location.name,
+          coordinates: coordinates
+        });
+      }
+    } catch (error) {
+      console.error('Error selecting location:', error);
+      Alert.alert('Error', 'Could not get coordinates for this location.');
+    }
+  };
+
+  const handleSearchInputChange = (text) => {
+    setSearchingLocation(text);
+    if (text.length >= 2) {
+      searchLocations(text);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
@@ -717,19 +901,111 @@ export default function RouteSetupScreen() {
               From: {userLocation ? 'Your Current Location' : 'Unknown Location'}
             </Text>
             
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Destination (e.g., Yaoundé Central Market)"
-              value={endLocation}
-              onChangeText={setEndLocation}
-              autoCapitalize="words"
-            />
+            {/* Enhanced Search Input */}
+            <View style={styles.searchInputContainer}>
+              <View style={styles.searchInputWrapper}>
+                <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchInputIcon} />
+                <TextInput
+                  style={styles.enhancedSearchInput}
+                  placeholder="Search for destination..."
+                  value={searchingLocation}
+                  onChangeText={handleSearchInputChange}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+                {isSearching && (
+                  <ActivityIndicator size="small" color={colors.primary} style={styles.searchLoading} />
+                )}
+              </View>
+              
+              {/* Location Suggestions */}
+              {showSuggestions && suggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="handled">
+                    {suggestions.map((location, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => handleLocationSelect(location)}
+                      >
+                        <View style={styles.suggestionIconContainer}>
+                          <Ionicons 
+                            name={getLocationIcon(location.type)} 
+                            size={20} 
+                            color={location.isPopular ? colors.primary : colors.textSecondary} 
+                          />
+                        </View>
+                        <View style={styles.suggestionTextContainer}>
+                          <Text style={styles.suggestionName}>{location.name}</Text>
+                          <Text style={styles.suggestionAddress}>{location.address}</Text>
+                        </View>
+                        {location.isPopular && (
+                          <View style={styles.popularBadge}>
+                            <Text style={styles.popularBadgeText}>Popular</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+            
+            {/* Popular Locations */}
+            {!showSuggestions && (
+              <View style={styles.popularLocationsContainer}>
+                <Text style={styles.popularLocationsTitle}>Popular Destinations</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularLocationsList}>
+                  {POPULAR_LOCATIONS.slice(0, 8).map((location, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.popularLocationItem}
+                      onPress={() => handleLocationSelect(location)}
+                    >
+                      <Ionicons 
+                        name={getLocationIcon(location.type)} 
+                        size={24} 
+                        color={colors.primary} 
+                      />
+                      <Text style={styles.popularLocationName}>{location.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
+            {/* Current Route Display */}
+            {endLocation && (
+              <View style={styles.currentRouteContainer}>
+                <Text style={styles.currentRouteTitle}>Selected Route:</Text>
+                <View style={styles.routeDisplay}>
+                  <View style={styles.routePoint}>
+                    <View style={styles.routePointIcon}>
+                      <Ionicons name="location" size={16} color={colors.success} />
+                    </View>
+                    <Text style={styles.routePointText}>Your Location</Text>
+                  </View>
+                  <View style={styles.routeArrow}>
+                    <Ionicons name="arrow-down" size={16} color={colors.textSecondary} />
+                  </View>
+                  <View style={styles.routePoint}>
+                    <View style={styles.routePointIcon}>
+                      <Ionicons name="location" size={16} color={colors.primary} />
+                    </View>
+                    <Text style={styles.routePointText}>{endLocation}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
             
             <TouchableOpacity 
-              style={styles.searchButton} 
+              style={[styles.searchButton, !endLocation && styles.searchButtonDisabled]} 
               onPress={handleRouteSearch}
+              disabled={!endLocation}
             >
-              <Text style={styles.searchButtonText}>Find Route</Text>
+              <Text style={styles.searchButtonText}>
+                {endLocation ? 'Find Route' : 'Select Destination'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -967,5 +1243,146 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  searchInputContainer: {
+    marginBottom: 20,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  enhancedSearchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 0,
+    paddingHorizontal: 8,
+    color: colors.textPrimary,
+  },
+  searchInputIcon: {
+    marginRight: 8,
+  },
+  searchLoading: {
+    marginLeft: 10,
+  },
+  suggestionsContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    maxHeight: 150, // Limit height for suggestions
+    overflow: 'hidden',
+  },
+  suggestionsList: {
+    paddingVertical: 8,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.border,
+  },
+  suggestionIconContainer: {
+    width: 30,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+  },
+  suggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  suggestionAddress: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  popularBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 10,
+  },
+  popularBadgeText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  popularLocationsContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  popularLocationsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 10,
+  },
+  popularLocationsList: {
+    flexDirection: 'row',
+  },
+  popularLocationItem: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  popularLocationName: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  currentRouteContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  currentRouteTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 10,
+  },
+  routeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  routePoint: {
+    alignItems: 'center',
+  },
+  routePointIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  routePointText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 5,
+  },
+  routeArrow: {
+    marginHorizontal: 10,
+  },
+  searchButtonDisabled: {
+    backgroundColor: colors.textSecondary,
+    opacity: 0.7,
   },
 });
