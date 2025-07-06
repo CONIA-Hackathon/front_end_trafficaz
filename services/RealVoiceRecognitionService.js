@@ -61,6 +61,22 @@ class RealVoiceRecognitionService {
       handler: this.handleRouteTraffic.bind(this)
     });
 
+    // Weather commands
+    this.commands.set('weather_info', {
+      patterns: ['weather', 'weather condition', 'temperature', 'how is the weather'],
+      handler: this.handleWeatherQuery.bind(this)
+    });
+
+    this.commands.set('weather_traffic', {
+      patterns: ['weather affecting traffic', 'weather impact', 'traffic weather'],
+      handler: this.handleWeatherTrafficQuery.bind(this)
+    });
+
+    this.commands.set('weather_forecast', {
+      patterns: ['weather forecast', 'weather prediction', 'will it rain'],
+      handler: this.handleWeatherForecast.bind(this)
+    });
+
     // Emergency commands
     this.commands.set('emergency', {
       patterns: ['emergency', 'accident', 'road blocked'],
@@ -313,6 +329,87 @@ class RealVoiceRecognitionService {
     setTimeout(() => {
       this.speakFeedback('Emergency alert sent. Please proceed with caution and follow traffic instructions.');
     }, 1000);
+  }
+
+  async handleWeatherQuery(command) {
+    try {
+      this.speakFeedback('Checking current weather conditions. Please wait.');
+      
+      const location = await this.getCurrentLocation();
+      const weatherData = await weatherService.getCurrentWeather(location.coords.latitude, location.coords.longitude);
+      
+      const weatherDescription = weatherData.description;
+      const temperature = weatherData.temperature;
+      const humidity = weatherData.humidity;
+      
+      this.speakFeedback(`Current weather: ${weatherDescription}. Temperature is ${temperature} degrees Celsius. Humidity is ${humidity} percent.`);
+      
+    } catch (error) {
+      console.error('Error processing weather query:', error);
+      this.speakFeedback('Sorry, I couldn\'t check the weather right now. Please try again.');
+    }
+  }
+
+  async handleWeatherTrafficQuery(command) {
+    try {
+      this.speakFeedback('Checking how weather is affecting traffic. Please wait.');
+      
+      const location = await this.getCurrentLocation();
+      const weatherData = await weatherService.getCurrentWeather(location.coords.latitude, location.coords.longitude);
+      
+      const trafficImpact = weatherData.trafficImpact;
+      const impactLevel = trafficImpact.level;
+      const delayMinutes = trafficImpact.delayMinutes;
+      
+      if (impactLevel === 'low') {
+        this.speakFeedback('Weather conditions are good. Traffic should be normal with minimal delays.');
+      } else if (impactLevel === 'medium') {
+        this.speakFeedback(`Weather is moderately affecting traffic. Expect delays of about ${delayMinutes} minutes. Drive with caution.`);
+      } else if (impactLevel === 'high') {
+        this.speakFeedback(`Weather is significantly affecting traffic. Expect delays of about ${delayMinutes} minutes. Consider leaving earlier.`);
+      } else {
+        this.speakFeedback(`Weather is severely affecting traffic. Expect delays of about ${delayMinutes} minutes. Consider alternative routes or public transport.`);
+      }
+      
+    } catch (error) {
+      console.error('Error processing weather traffic query:', error);
+      this.speakFeedback('Sorry, I couldn\'t check weather traffic impact right now. Please try again.');
+    }
+  }
+
+  async handleWeatherForecast(command) {
+    try {
+      this.speakFeedback('Checking weather forecast. Please wait.');
+      
+      const location = await this.getCurrentLocation();
+      const forecastData = await weatherService.getWeatherForecast(location.coords.latitude, location.coords.longitude);
+      
+      if (forecastData.hourly && forecastData.hourly.length > 0) {
+        const nextFewHours = forecastData.hourly.slice(0, 4);
+        let forecastSummary = 'Weather forecast for the next few hours: ';
+        
+        nextFewHours.forEach((hour, index) => {
+          const time = hour.time.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+          const temp = hour.temperature;
+          const description = hour.description;
+          const rainChance = hour.rainChance;
+          
+          forecastSummary += `${time}: ${description}, ${temp} degrees`;
+          if (rainChance > 30) {
+            forecastSummary += `, ${Math.round(rainChance)}% chance of rain`;
+          }
+          forecastSummary += '. ';
+        });
+        
+        this.speakFeedback(forecastSummary);
+      } else {
+        this.speakFeedback('Weather forecast data is currently unavailable.');
+      }
+      
+    } catch (error) {
+      console.error('Error processing weather forecast:', error);
+      this.speakFeedback('Sorry, I couldn\'t check the weather forecast right now. Please try again.');
+    }
   }
 
   // Extract destination from command

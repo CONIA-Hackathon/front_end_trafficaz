@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import Button from '../../components/Button';
 import AlertCard from '../../components/AlertCard';
 import Toggle from '../../components/Toggle';
+import WeatherWidget from '../../components/WeatherWidget';
 import colors from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -133,6 +134,10 @@ const HomeScreen = () => {
 
   const navigateToAlerts = () => {
     router.push('/Alert');
+  };
+
+  const navigateToWeather = () => {
+    router.push('/Weather');
   };
 
   const navigateToProfile = () => {
@@ -262,6 +267,9 @@ const HomeScreen = () => {
             </View>
           </View>
         </View>
+
+        {/* Weather Widget */}
+        <WeatherWidget onPress={navigateToWeather} />
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
@@ -396,6 +404,16 @@ const HomeScreen = () => {
                 <Ionicons name="notifications" size={24} color={colors.warning} />
               </View>
               <Text style={styles.actionText}>View Alerts</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={navigateToWeather}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name="partly-sunny" size={24} color={colors.success} />
+              </View>
+              <Text style={styles.actionText}>Weather</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 

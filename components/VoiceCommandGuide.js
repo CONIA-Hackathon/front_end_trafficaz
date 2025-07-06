@@ -96,6 +96,28 @@ const VoiceCommandGuide = ({ visible, onClose }) => {
           description: 'Get voice command assistance'
         }
       ]
+    },
+    weather: {
+      title: 'Weather Commands',
+      icon: 'partly-sunny',
+      commands: [
+        {
+          phrase: 'Hey TrafficAZ, how is the weather?',
+          description: 'Get current weather conditions'
+        },
+        {
+          phrase: 'Hey TrafficAZ, how is weather affecting traffic?',
+          description: 'Check weather impact on traffic'
+        },
+        {
+          phrase: 'Hey TrafficAZ, what\'s the weather forecast?',
+          description: 'Get weather predictions for the day'
+        },
+        {
+          phrase: 'Hey TrafficAZ, will it rain during my commute?',
+          description: 'Check rain probability for travel time'
+        }
+      ]
     }
   };
 
@@ -105,7 +127,8 @@ const VoiceCommandGuide = ({ visible, onClose }) => {
       reporting: 'radio-button-on',
       alerts: 'notifications',
       navigation: 'map',
-      general: 'help-circle'
+      general: 'help-circle',
+      weather: 'partly-sunny'
     };
     return icons[category] || 'help-circle';
   };
