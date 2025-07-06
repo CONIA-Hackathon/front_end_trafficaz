@@ -1,46 +1,38 @@
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import colors from '../constants/colors';
+import SplashScreen from './screens/SplashScreen';
 
 export default function Index() {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
-      // Check if user has completed onboarding (you can store this in AsyncStorage)
-      // For now, we'll assume they need to go through onboarding
+    if (!loading && !showSplash) {
       const checkOnboardingStatus = async () => {
         try {
-          // You can add AsyncStorage check here for onboarding completion
-          // const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
-          
           if (isAuthenticated) {
-            // User is authenticated, go to home
             router.replace('/Home');
           } else {
-            // User is not authenticated, go to onboarding
             router.replace('/onboarding');
           }
         } catch (error) {
           console.error('Error checking onboarding status:', error);
-          // Default to onboarding on error
           router.replace('/onboarding');
         }
       };
-
       checkOnboardingStatus();
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading, showSplash, router]);
 
-  // Show loading screen while checking authentication
-  return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
-  );
+  if (loading || showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
+  return <View style={styles.container} />;
 }
 
 const styles = StyleSheet.create({
@@ -51,4 +43,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 });
+
 

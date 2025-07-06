@@ -10,7 +10,8 @@ import {
   Modal,
   Text,
   ActivityIndicator,
-  Alert
+  Alert,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
@@ -18,6 +19,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import locationService from '../../services/locationService';
+import trafficService from '../../services/trafficService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,6 +39,12 @@ export default function RouteSetupScreen() {
   const [startCoords, setStartCoords] = useState(null);
   const [endCoords, setEndCoords] = useState(null);
   const [backendUsers, setBackendUsers] = useState([]);
+  const [currentSpeed, setCurrentSpeed] = useState(0);
+  const [locationSubscription, setLocationSubscription] = useState(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const [trackingData, setTrackingData] = useState([]);
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  const pulseAnim2 = useRef(new Animated.Value(0.1)).current;
   const mapRef = useRef(null);
 
   // Sample backend data - replace with actual API calls
@@ -84,7 +92,50 @@ export default function RouteSetupScreen() {
   useEffect(() => {
     initializeMap();
     fetchBackendData();
+    startLocationTracking();
+    startPulseAnimation();
+    
+    // Cleanup subscription on unmount
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
   }, []);
+
+  const startPulseAnimation = () => {
+    // First pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.8,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Second pulse animation (delayed for layered effect)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim2, {
+          toValue: 0.6,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim2, {
+          toValue: 0.1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   const initializeMap = async () => {
     try {
@@ -114,21 +165,149 @@ export default function RouteSetupScreen() {
     }
   };
 
-  const fetchBackendData = async () => {
+  const startLocationTracking = async () => {
     try {
-      // TODO: Replace with actual API calls to your backend
-      // const response = await fetch('your-backend-api/users/locations');
-      // const data = await response.json();
-      
-      // For now, using sample data
-      setBackendUsers(sampleBackendUsers);
-      
-      console.log('Backend data loaded:', {
-        users: sampleBackendUsers.length
-      });
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Location permission is required for traffic tracking');
+        return;
+      }
+
+      // Start watching position with high accuracy
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced, // Better for walking
+          timeInterval: 3000, // Update every 3 seconds for more responsive tracking
+          distanceInterval: 5, // Update every 5 meters for walking detection
+        },
+        (location) => {
+          handleLocationUpdate(location);
+        }
+      );
+
+      setLocationSubscription(subscription);
+      setIsTracking(true);
+      console.log('Location tracking started');
       
     } catch (error) {
-      console.error('Error fetching backend data:', error);
+      console.error('Error starting location tracking:', error);
+      Alert.alert('Tracking Error', 'Could not start location tracking');
+    }
+  };
+
+  const handleLocationUpdate = (location) => {
+    const { coords } = location;
+    let speed = coords.speed || 0; // Speed in meters per second
+    
+    // Handle cases where GPS doesn't provide speed (common when walking)
+    if (speed === 0 || speed === null) {
+      // Calculate speed from distance traveled if we have previous location
+      if (userLocation && userLocation.coords) {
+        const distance = calculateDistance(
+          userLocation.coords.latitude,
+          userLocation.coords.longitude,
+          coords.latitude,
+          coords.longitude
+        );
+        const timeDiff = (Date.now() - userLocation.timestamp) / 1000; // seconds
+        if (timeDiff > 0) {
+          speed = distance / timeDiff; // meters per second
+        }
+      }
+    }
+    
+    // Convert speed to km/h for display
+    const speedKmh = speed * 3.6;
+    setCurrentSpeed(speedKmh);
+    
+    // Update user location
+    setUserLocation(location);
+    
+    // Prepare data for backend
+    const trackingDataPoint = {
+      userId: 'user_' + Math.floor(Math.random() * 1000000), // Consistent user ID for session
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      speed: speedKmh, // Send speed in km/h
+      timestamp: new Date().toISOString(),
+      accuracy: coords.accuracy,
+      altitude: coords.altitude,
+      heading: coords.heading,
+    };
+    
+    // Log the data with more details
+    console.log('📍 Location Update:', {
+      ...trackingDataPoint,
+      speedKmh: speedKmh.toFixed(2) + ' km/h',
+      speedMps: speed.toFixed(2) + ' m/s',
+      accuracy: coords.accuracy + 'm',
+      altitude: coords.altitude,
+      heading: coords.heading,
+      gpsSpeed: coords.speed,
+      calculatedSpeed: speed
+    });
+    
+    // Add to tracking data array
+    setTrackingData(prev => [...prev.slice(-9), trackingDataPoint]); // Keep last 10 points
+    
+    // Send to backend (mock implementation)
+    sendToBackend(trackingDataPoint);
+  };
+
+  const sendToBackend = async (data) => {
+    try {
+      // Use the traffic service to send data to backend
+      const response = await trafficService.sendLocationData(data);
+      console.log('✅ Backend Response:', response);
+      
+    } catch (error) {
+      console.error('❌ Error sending to backend:', error);
+    }
+  };
+
+  const stopLocationTracking = () => {
+    if (locationSubscription) {
+      locationSubscription.remove();
+      setLocationSubscription(null);
+      setIsTracking(false);
+      console.log('Location tracking stopped');
+    }
+  };
+
+  const fetchBackendData = async () => {
+    try {
+      // Use traffic service to get congestion analysis from backend
+      const analysisResult = await trafficService.getTrafficAnalysis();
+      
+      if (analysisResult.success && analysisResult.data) {
+        // Convert analysis clusters to map markers
+        const trafficClusters = analysisResult.data.map(cluster => ({
+          id: cluster.clusterId,
+          latitude: cluster.centroidLatitude,
+          longitude: cluster.centroidLongitude,
+          speed: cluster.averageSpeed,
+          userCount: cluster.userCount,
+          timestamp: cluster.detectedAt,
+          isTraffic: cluster.averageSpeed < 10, // Consider traffic if speed < 10 km/h
+          clusterData: cluster
+        }));
+        
+        setBackendUsers(trafficClusters);
+        
+        console.log('🧠 Traffic analysis loaded:', {
+          clusters: trafficClusters.length,
+          totalUsers: trafficClusters.reduce((sum, cluster) => sum + cluster.userCount, 0),
+          congestedAreas: trafficClusters.filter(c => c.isTraffic).length
+        });
+      } else {
+        throw new Error('Invalid analysis response');
+      }
+      
+    } catch (error) {
+      console.error('Error fetching traffic analysis:', error);
+      // Fallback to sample data if API fails
+      setBackendUsers(sampleBackendUsers);
     }
   };
 
@@ -173,31 +352,83 @@ export default function RouteSetupScreen() {
   };
 
   const handleRouteSearch = async () => {
-    const startResult = await geocodeLocation(startLocation, country);
-    const endResult = await geocodeLocation(endLocation, country);
+    try {
+      const startResult = await geocodeLocation(startLocation, country);
+      const endResult = await geocodeLocation(endLocation, country);
 
-    if (startResult && endResult) {
-      const startPoint = {
-        latitude: startResult.latitude,
-        longitude: startResult.longitude,
-      };
-      const endPoint = {
-        latitude: endResult.latitude,
-        longitude: endResult.longitude,
-      };
+      if (startResult && endResult) {
+        const startPoint = {
+          latitude: startResult.latitude,
+          longitude: startResult.longitude,
+        };
+        const endPoint = {
+          latitude: endResult.latitude,
+          longitude: endResult.longitude,
+        };
 
-      setStartCoords(startPoint);
-      setEndCoords(endPoint);
+        setStartCoords(startPoint);
+        setEndCoords(endPoint);
 
-      // Calculate and set region to fit start and end locations
-      const newRegion = getRegionFromPoints([startPoint, endPoint]);
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 1000);
-    } else {
-      Alert.alert('Error', 'Could not find coordinates for start or end location.');
+        // Check traffic along the route
+        console.log('🛣️ Checking traffic for route:', {
+          start: startPoint,
+          end: endPoint
+        });
+
+        const routeTraffic = await trafficService.checkRouteTraffic(
+          startPoint.latitude,
+          startPoint.longitude,
+          endPoint.latitude,
+          endPoint.longitude
+        );
+
+        // Show traffic information to user
+        if (routeTraffic.success) {
+          const { routeInfo, recommendations } = routeTraffic;
+          
+          let alertMessage = `Route Analysis:\n\n`;
+          alertMessage += `Distance: ${(routeInfo.distance / 1000).toFixed(1)} km\n`;
+          alertMessage += `Estimated Time: ${Math.round(routeInfo.estimatedTime)} min\n`;
+          alertMessage += `Traffic Level: ${routeInfo.trafficLevel.toUpperCase()}\n`;
+          alertMessage += `Average Speed: ${routeInfo.averageSpeed.toFixed(1)} km/h\n`;
+          alertMessage += `Users in Area: ${routeInfo.userCount}\n\n`;
+          
+          if (recommendations.length > 0) {
+            alertMessage += `Recommendations:\n${recommendations.join('\n')}`;
+          }
+
+          Alert.alert('Traffic Analysis', alertMessage);
+        }
+
+        // Calculate and set region to fit start and end locations
+        const newRegion = getRegionFromPoints([startPoint, endPoint]);
+        setRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 1000);
+      } else {
+        Alert.alert('Error', 'Could not find coordinates for start or end location.');
+      }
+    } catch (error) {
+      console.error('Error checking route traffic:', error);
+      Alert.alert('Error', 'Could not analyze traffic for this route.');
     }
 
     setModalVisible(false);
+  };
+
+  // Calculate distance between two points in meters
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
   };
 
   const centerOnUserLocation = () => {
@@ -250,6 +481,36 @@ export default function RouteSetupScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Speed Indicator */}
+      <View style={styles.speedIndicator}>
+        <View style={styles.speedContainer}>
+          <View style={styles.trackingStatusContainer}>
+            <Ionicons 
+              name={isTracking ? "radio-button-on" : "radio-button-off"} 
+              size={16} 
+              color={isTracking ? colors.success : colors.textSecondary} 
+            />
+            {isTracking && (
+              <>
+                <Animated.View style={[styles.trackingGlow, { opacity: pulseAnim }]} />
+                <Animated.View style={[styles.trackingGlow2, { opacity: pulseAnim2 }]} />
+              </>
+            )}
+          </View>
+          <Text style={styles.speedText}>
+            {isTracking ? `${currentSpeed.toFixed(1)} km/h` : 'Not tracking'}
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={[styles.trackingButton, { backgroundColor: isTracking ? colors.danger : colors.success }]}
+          onPress={isTracking ? stopLocationTracking : startLocationTracking}
+        >
+          <Text style={styles.trackingButtonText}>
+            {isTracking ? 'Stop Tracking' : 'Start Tracking'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Map */}
       <MapView 
         ref={mapRef}
@@ -270,7 +531,7 @@ export default function RouteSetupScreen() {
               longitude: userLocation.coords.longitude,
             }}
             title="Your Location"
-            description="You are here"
+            description={`Speed: ${currentSpeed.toFixed(1)} km/h`}
           >
             <View style={styles.userLocationMarker}>
               <View style={styles.userLocationDot} />
@@ -320,6 +581,16 @@ export default function RouteSetupScreen() {
             <Text style={styles.legendText}>Other Users ({backendUsers.filter(u => !u.isTraffic).length})</Text>
           </View>
         </View>
+        
+        {/* Tracking Data Summary */}
+        {trackingData.length > 0 && (
+          <View style={styles.trackingSummary}>
+            <Text style={styles.trackingSummaryText}>
+              📊 Tracking: {trackingData.length} data points | 
+              Avg Speed: {(trackingData.reduce((sum, point) => sum + point.speed, 0) / trackingData.length).toFixed(1)} km/h
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Route Search Modal */}
@@ -413,6 +684,59 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  speedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  speedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trackingStatusContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackingGlow: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.success + '40',
+    borderWidth: 1,
+    borderColor: colors.success + '60',
+  },
+  trackingGlow2: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.success + '20',
+    borderWidth: 1,
+    borderColor: colors.success + '40',
+  },
+  speedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginLeft: 8,
+  },
+  trackingButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  trackingButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   map: {
     flex: 1,
   },
@@ -469,6 +793,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    marginBottom: 8,
   },
   legendItem: {
     flexDirection: 'row',
@@ -478,6 +803,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginLeft: 8,
+  },
+  trackingSummary: {
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  trackingSummaryText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   trafficInfo: {
     alignItems: 'center',
