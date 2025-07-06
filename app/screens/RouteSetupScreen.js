@@ -755,7 +755,7 @@ export default function RouteSetupScreen() {
           <Text style={styles.searchText}>
             {startLocation && endLocation 
               ? `${startLocation} → ${endLocation}` 
-              : 'Search route from current location to destination'
+              : 'Search destination route ...'
             }
           </Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />

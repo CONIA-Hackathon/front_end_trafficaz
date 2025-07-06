@@ -268,8 +268,7 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* Weather Widget */}
-        <WeatherWidget onPress={navigateToWeather} />
+        
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
@@ -296,11 +295,14 @@ const HomeScreen = () => {
 
         {/* Scheduled Routes Section */}
         <View style={styles.scheduledRoutesSection}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="time" size={20} color={colors.textPrimary} />
-            <Text style={styles.sectionTitle}>Scheduled Routes</Text>
+          <View style={styles. sheduledes}>
+            <View style={styles.shd}>
+              <Ionicons name="time" size={20} color={colors.textPrimary} />
+              <Text style={styles.sectionTitle}>Scheduled Routes</Text>
+            </View>
+
             <TouchableOpacity onPress={navigateToScheduledRoutes}>
-              <Ionicons name="add-circle" size={20} color={colors.primary} />
+              <Ionicons name="add-circle" size={35} color={colors.primary} />
             </TouchableOpacity>
           </View>
           
@@ -358,6 +360,9 @@ const HomeScreen = () => {
             )}
           </View>
         </View>
+
+        {/* Weather Widget */}
+        <WeatherWidget onPress={navigateToWeather} />
 
         {/* Latest Alert */}
         <View style={styles.alertSection}>
@@ -590,6 +595,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+
+  sheduledes:{
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15
+    
+  },
+  shd:{
+    flexDirection: 'row',
+       alignItems: 'center',
+    justifyContent: 'space-between'
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -604,6 +622,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+
   actionCard: {
     width: '48%',
     backgroundColor: colors.white,
