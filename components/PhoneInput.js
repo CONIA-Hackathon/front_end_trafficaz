@@ -34,38 +34,38 @@ const PhoneInput = ({
 
   return (
     <View style={[styles.container, style]}>
-      {/* Country Code Display */}
-      <View style={styles.countryCodeContainer}>
-        <View style={styles.countryCode}>
-          <Text style={styles.countryCodeText}>+237</Text>
-          <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
-        </View>
-      </View>
-
-      {/* Phone Number Input */}
       <View style={[
         styles.inputContainer,
         isFocused && styles.inputContainerFocused,
         error && styles.inputContainerError
       ]}>
-        <Ionicons 
-          name="call" 
-          size={20} 
-          color={isFocused ? colors.primary : colors.textSecondary} 
-          style={styles.icon}
-        />
-        <TextInput
-          style={styles.input}
-          value={displayValue}
-          onChangeText={handleChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
-          keyboardType="phone-pad"
-          maxLength={9} // Cameroon numbers are typically 9 digits
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          {...props}
-        />
+        {/* Country Code Section */}
+        <View style={styles.countryCodeSection}>
+          <Text style={styles.countryCodeText}>+237</Text>
+          <View style={styles.separator} />
+        </View>
+
+        {/* Phone Number Input */}
+        <View style={styles.inputSection}>
+          <Ionicons 
+            name="call" 
+            size={20} 
+            color={isFocused ? colors.primary : colors.textSecondary} 
+            style={styles.icon}
+          />
+          <TextInput
+            style={styles.input}
+            value={displayValue}
+            onChangeText={handleChangeText}
+            placeholder={placeholder}
+            placeholderTextColor={colors.textSecondary}
+            keyboardType="phone-pad"
+            maxLength={9} // Cameroon numbers are typically 9 digits
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            {...props}
+          />
+        </View>
       </View>
 
       {/* Helper Text */}
@@ -80,40 +80,19 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
   },
-  countryCodeContainer: {
-    marginBottom: 8,
-  },
-  countryCode: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'flex-start',
-  },
-  countryCodeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginRight: 4,
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderWidth: 2,
     borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    overflow: 'hidden',
   },
   inputContainerFocused: {
     borderColor: colors.primary,
@@ -124,6 +103,33 @@ const styles = StyleSheet.create({
   },
   inputContainerError: {
     borderColor: colors.danger,
+  },
+  countryCodeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginRight: 8,
+  },
+  separator: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.border,
+  },
+  inputSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   icon: {
     marginRight: 12,
@@ -137,7 +143,7 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginTop: 6,
+    marginTop: 8,
     marginLeft: 4,
   },
 });

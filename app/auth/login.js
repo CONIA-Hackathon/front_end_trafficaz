@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/Button';
@@ -18,7 +18,7 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { setPhoneNumberForOtp } = useAuth();
+  const { setPhoneNumberForOtp, setDevelopmentOtpCode } = useAuth();
   const { t } = useLanguage();
 
   const validateForm = () => {
@@ -55,6 +55,13 @@ export default function LoginScreen() {
       // Send OTP after successful login
       const otpResponse = await sendOtp(formData.phoneNumber);
       console.log('OTP sent:', otpResponse);
+
+      // Extract OTP from response for development
+      const otpCode = otpResponse.data?.otpCode;
+      if (otpCode) {
+        console.log('Development OTP from login:', otpCode);
+        setDevelopmentOtpCode(otpCode);
+      }
 
       // Navigate to OTP screen
       router.push('/auth/otp');
@@ -98,23 +105,32 @@ export default function LoginScreen() {
 
         {/* Main Content */}
         <View style={styles.mainContent}>
-          {/* Icon */}
-          <View style={styles.iconContainer}>
-            <View style={styles.iconBackground}>
-              <Ionicons name="person-circle" size={50} color={colors.primary} />
+          {/* Logo/Brand Section */}
+          <View style={styles.brandSection}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoBackground}>
+                <Ionicons name="car-sport" size={48} color={colors.primary} />
+              </View>
             </View>
+            <Text style={styles.brandName}>TrafficAZ</Text>
+            <Text style={styles.brandTagline}>Your Smart Traffic Companion</Text>
           </View>
 
-          <Text style={styles.title}>{t('welcomeBack')}</Text>
-          <Text style={styles.subtitle}>{t('signInToAccount')}</Text>
+          {/* Welcome Section */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.title}>{t('welcomeBack')}</Text>
+            <Text style={styles.subtitle}>{t('signInToAccount')}</Text>
+          </View>
 
-          <View style={styles.form}>
+          {/* Form Section */}
+          <View style={styles.formSection}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('phoneNumber')}</Text>
               <PhoneInput
                 value={formData.phoneNumber}
                 onChangeText={(value) => updateFormData('phoneNumber', value)}
                 error={!!errors.phoneNumber}
+                placeholder="Enter your phone number"
               />
               {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
             </View>
@@ -133,7 +149,7 @@ export default function LoginScreen() {
             </View>
 
             <Button 
-              title={t('login')} 
+              title={loading ? "Signing In..." : t('login')} 
               onPress={handleLogin} 
               style={styles.loginButton}
               loading={loading}
@@ -150,7 +166,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
-    </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -173,9 +189,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
@@ -191,37 +207,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 40,
   },
-  iconContainer: {
-    marginBottom: 32,
+  brandSection: {
+    alignItems: 'center',
+    marginBottom: 48,
   },
-  iconBackground: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  logoContainer: {
+    marginBottom: 16,
+  },
+  logoBackground: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 12,
+  },
+  brandName: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  brandTagline: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  welcomeSection: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 40,
     lineHeight: 24,
   },
-  form: {
+  formSection: {
     width: '100%',
     maxWidth: 400,
   },
@@ -232,7 +266,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 14,
+    marginTop: 6,
+    marginLeft: 4,
   },
   loginButton: {
     marginTop: 16,
@@ -251,10 +291,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.primary,
     fontWeight: '600',
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 12,
-    marginTop: 4,
   },
 }); 

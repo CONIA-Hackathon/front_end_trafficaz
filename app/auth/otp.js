@@ -1,23 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, Dimensions, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Alert, 
+  KeyboardAvoidingView, 
+  Platform, 
+  TouchableOpacity, 
+  Dimensions, 
+  TextInput,
+  Animated,
+  ActivityIndicator
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Button from '../../components/Button';
 import colors from '../../constants/colors';
 import { verifyOtp, sendOtp } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function OtpScreen() {
   const [otp, setOtp] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [showOtp, setShowOtp] = useState(false);
+  
   const router = useRouter();
   const { phoneNumber, login, developmentOtp, clearDevelopmentOtp } = useAuth();
   const { t } = useLanguage();
+  
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Debug: Log OTP screen data
   console.log('=== OTP SCREEN DATA ===');
@@ -25,10 +46,57 @@ export default function OtpScreen() {
   console.log('Development OTP:', developmentOtp);
   console.log('Current OTP Input:', otp.join(''));
 
+  useEffect(() => {
+    // Start animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Start pulse animation for OTP display
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Start resend timer
+    if (resendTimer === 0) {
+      setResendTimer(30);
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
   const validateOtp = () => {
     const otpString = otp.join('');
     if (!otpString || otpString.length !== 4) {
-      setError(t('validOtp'));
+      setError('Please enter a valid 4-digit OTP');
       return false;
     }
     setError('');
@@ -96,7 +164,7 @@ export default function OtpScreen() {
 
         console.log('Login successful, navigating to home...');
         // Navigate to home screen after successful verification
-        router.replace('/HomeScreen');
+        router.replace('/screens/HomeScreen');
       } else {
         // Store the authentication token and user data
         const userData = {
@@ -119,7 +187,7 @@ export default function OtpScreen() {
 
         console.log('Login successful, navigating to home...');
         // Navigate to home screen after successful verification
-        router.replace('/HomeScreen');
+        router.replace('/screens/HomeScreen');
       }
     } catch (error) {
       console.error('OTP verification failed:', error);
@@ -130,12 +198,21 @@ export default function OtpScreen() {
   };
 
   const handleResendOtp = async () => {
+    if (resendTimer > 0) return;
+    
     try {
+      setLoading(true);
       const response = await sendOtp(phoneNumber);
       console.log('OTP resent:', response);
+      
+      // Reset timer
+      setResendTimer(30);
+      
       Alert.alert('OTP Resent', 'A new OTP has been sent to your phone number.');
     } catch (error) {
       Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -147,7 +224,18 @@ export default function OtpScreen() {
       console.log('=== AUTO-FILL OTP ===');
       console.log('Auto-filling OTP:', developmentOtp);
       console.log('OTP auto-filled successfully');
+      
+      // Show success feedback
+      Alert.alert(
+        'OTP Auto-filled!',
+        'The OTP has been automatically filled. You can now verify.',
+        [{ text: 'OK' }]
+      );
     }
+  };
+
+  const toggleOtpVisibility = () => {
+    setShowOtp(!showOtp);
   };
 
   // Redirect if no phone number is available
@@ -167,94 +255,144 @@ export default function OtpScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Main Content */}
-        <View style={styles.mainContent}>
-          <View style={styles.iconContainer}>
-            <View style={styles.iconBackground}>
-              <Ionicons name="shield-checkmark" size={40} color={colors.primary} />
-            </View>
-          </View>
-
-          <Text style={styles.title}>{t('verifyOtp')}</Text>
-          <Text style={styles.subtitle}>
-            {t('enterOtpCode')}{'\n'}
-            <Text style={styles.phoneNumber}>{phoneNumber}</Text>
-          </Text>
-
-          {/* Development OTP Display */}
-          {developmentOtp && (
-            <View style={styles.devOtpContainer}>
-              <Text style={styles.devOtpTitle}>Development OTP</Text>
-              <Text style={styles.devOtpCode}>{developmentOtp}</Text>
-              <TouchableOpacity 
-                style={styles.autoFillButton}
-                onPress={handleAutoFill}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="copy-outline" size={16} color={colors.white} />
-                <Text style={styles.autoFillText}>Auto-fill OTP</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* OTP Input */}
-          <View style={styles.otpContainer}>
-            <Text style={styles.otpLabel}>{t('otpCode')}</Text>
-            <View style={styles.otpInputContainer}>
-              {otp.map((digit, index) => (
-                <View key={index} style={styles.otpInputWrapper}>
-                  <TextInput
-                    style={[
-                      styles.otpInput,
-                      focusedIndex === index && styles.otpInputFocused,
-                      digit && styles.otpInputFilled
-                    ]}
-                    value={digit}
-                    onChangeText={(value) => handleOtpChange(value, index)}
-                    onKeyPress={(e) => handleKeyPress(e, index)}
-                    onFocus={() => setFocusedIndex(index)}
-                    keyboardType="numeric"
-                    maxLength={1}
-                    selectTextOnFocus
-                  />
-                </View>
-              ))}
-            </View>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-          </View>
-
-          {/* Verify Button */}
-          <Button 
-            title={t('verifyOtpButton')} 
-            onPress={handleVerifyOtp} 
-            style={styles.verifyButton}
-            loading={loading}
-            disabled={loading}
-            icon="checkmark-circle"
-            iconPosition="right"
-            size="large"
-          />
-
-          {/* Resend */}
-          <View style={styles.resendContainer}>
-            <Text style={styles.resendText}>{t('didntReceiveCode')} </Text>
-            <TouchableOpacity onPress={handleResendOtp}>
-              <Text style={styles.resendLink}>{t('resend')}</Text>
+      <LinearGradient
+        colors={[colors.primary + '20', colors.background]}
+        style={styles.gradient}
+      >
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
-        </View>
-    </View>
+
+          {/* Main Content */}
+          <View style={styles.mainContent}>
+            {/* Icon */}
+            <Animated.View 
+              style={[
+                styles.iconContainer,
+                { transform: [{ scale: pulseAnim }] }
+              ]}
+            >
+              <View style={styles.iconBackground}>
+                <Ionicons name="shield-checkmark" size={40} color={colors.primary} />
+              </View>
+            </Animated.View>
+
+            <Text style={styles.title}>Verify Your Phone</Text>
+            <Text style={styles.subtitle}>
+              Enter the 4-digit code sent to{'\n'}
+              <Text style={styles.phoneNumber}>{phoneNumber}</Text>
+            </Text>
+
+            {/* Development OTP Display */}
+            {developmentOtp && (
+              <View style={styles.devOtpContainer}>
+                <View style={styles.devOtpHeader}>
+                  <Ionicons name="code-slash" size={20} color={colors.warning} />
+                  <Text style={styles.devOtpTitle}>Development OTP</Text>
+                  <TouchableOpacity onPress={toggleOtpVisibility}>
+                    <Ionicons 
+                      name={showOtp ? "eye-off" : "eye"} 
+                      size={20} 
+                      color={colors.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                {showOtp && (
+                  <Animated.View style={styles.devOtpCodeContainer}>
+                    <Text style={styles.devOtpCode}>{developmentOtp}</Text>
+                    <Text style={styles.devOtpExpiry}>Expires in 5 minutes</Text>
+                  </Animated.View>
+                )}
+                
+                <TouchableOpacity 
+                  style={styles.autoFillButton}
+                  onPress={handleAutoFill}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="copy-outline" size={16} color={colors.white} />
+                  <Text style={styles.autoFillText}>Auto-fill OTP</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* OTP Input */}
+            <View style={styles.otpContainer}>
+              <Text style={styles.otpLabel}>Enter OTP Code</Text>
+              <View style={styles.otpInputContainer}>
+                {otp.map((digit, index) => (
+                  <View key={index} style={styles.otpInputWrapper}>
+                    <TextInput
+                      style={[
+                        styles.otpInput,
+                        focusedIndex === index && styles.otpInputFocused,
+                        digit && styles.otpInputFilled
+                      ]}
+                      value={digit}
+                      onChangeText={(value) => handleOtpChange(value, index)}
+                      onKeyPress={(e) => handleKeyPress(e, index)}
+                      onFocus={() => setFocusedIndex(index)}
+                      keyboardType="numeric"
+                      maxLength={1}
+                      selectTextOnFocus
+                    />
+                    {digit && (
+                      <View style={styles.otpDot}>
+                        <Text style={styles.otpDotText}>{digit}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+              {error && <Text style={styles.errorText}>{error}</Text>}
+            </View>
+
+            {/* Verify Button */}
+            <Button 
+              title="Verify OTP" 
+              onPress={handleVerifyOtp} 
+              style={styles.verifyButton}
+              loading={loading}
+              disabled={loading}
+              icon="checkmark-circle"
+              iconPosition="right"
+              size="large"
+            />
+
+            {/* Resend */}
+            <View style={styles.resendContainer}>
+              <Text style={styles.resendText}>Didn't receive the code? </Text>
+              <TouchableOpacity 
+                onPress={handleResendOtp}
+                disabled={resendTimer > 0}
+                style={resendTimer > 0 && styles.resendDisabled}
+              >
+                <Text style={[
+                  styles.resendLink,
+                  resendTimer > 0 && styles.resendLinkDisabled
+                ]}>
+                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }
@@ -262,14 +400,18 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  gradient: {
+    flex: 1,
   },
   content: {
     flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 20,
   },
   backButton: {
@@ -287,7 +429,6 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -336,21 +477,45 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: colors.primary + '20',
+    borderWidth: 2,
+    borderColor: colors.warning + '30',
+    borderStyle: 'dashed',
+  },
+  devOtpHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
   },
   devOtpTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: 8,
+    marginHorizontal: 10,
+  },
+  devOtpCodeContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: colors.warning + '10',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.warning + '20',
   },
   devOtpCode: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 16,
-    letterSpacing: 4,
+    color: colors.warning,
+    letterSpacing: 6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  devOtpExpiry: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   autoFillButton: {
     backgroundColor: colors.primary,
@@ -385,6 +550,7 @@ const styles = StyleSheet.create({
   otpInputWrapper: {
     width: 60,
     height: 60,
+    position: 'relative',
   },
   otpInput: {
     width: '100%',
@@ -416,6 +582,23 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primary + '10',
   },
+  otpDot: {
+    position: 'absolute',
+    bottom: -10,
+    left: '50%',
+    transform: [{ translateX: -10 }],
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  otpDotText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   errorText: {
     color: colors.danger,
     fontSize: 14,
@@ -439,5 +622,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.primary,
     fontWeight: '600',
+  },
+  resendDisabled: {
+    opacity: 0.7,
+  },
+  resendLinkDisabled: {
+    color: colors.textSecondary,
   },
 }); 
