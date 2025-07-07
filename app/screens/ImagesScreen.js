@@ -21,9 +21,11 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import roadAnalysisService from '../../services/roadAnalysisService';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
+
+const router = useRouter();
 
 // Sample road analysis results - replace with actual backend data
 const SAMPLE_ANALYSIS_RESULTS = [
@@ -100,7 +102,6 @@ export default function ImagesScreen() {
   const [captureType, setCaptureType] = useState('cctv');
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const navigation = useNavigation();
 
   useEffect(() => {
     getCurrentLocation();
@@ -458,7 +459,7 @@ export default function ImagesScreen() {
       <View style={{alignItems: 'flex-end', marginHorizontal: 20, marginBottom: 5}}>
         <TouchableOpacity
           style={{backgroundColor: colors.primary, padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center'}}
-          onPress={() => navigation.navigate('RouteSetup', { analysisResults })}
+          onPress={() => router.push({ pathname: '/screens/RouteSetupScreen', params: { analysisResults } })}
         >
           <Ionicons name="map" size={18} color={colors.white} style={{marginRight: 6}} />
           <Text style={{color: colors.white, fontWeight: 'bold'}}>View on Map</Text>
