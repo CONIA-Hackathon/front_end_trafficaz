@@ -46,7 +46,8 @@ const SAMPLE_ANALYSIS_RESULTS = [
       incidents: ['Minor congestion', 'Slow moving traffic'],
       recommendations: ['Consider alternative route', 'Traffic light optimization needed']
     },
-    status: 'completed'
+    status: 'completed',
+    isSample: true, // Mark as sample
   },
   {
     id: '2',
@@ -65,7 +66,8 @@ const SAMPLE_ANALYSIS_RESULTS = [
       incidents: ['Normal traffic flow'],
       recommendations: ['Monitor for peak hours']
     },
-    status: 'completed'
+    status: 'completed',
+    isSample: true, // Mark as sample
   },
   {
     id: '3',
@@ -84,7 +86,8 @@ const SAMPLE_ANALYSIS_RESULTS = [
       incidents: ['Clear road conditions'],
       recommendations: ['Optimal driving conditions']
     },
-    status: 'completed'
+    status: 'completed',
+    isSample: true, // Mark as sample
   }
 ];
 
@@ -218,10 +221,19 @@ export default function ImagesScreen() {
 
         // Parse the response
         const d = result.data;
+        // Use coordinates as fallback if locationName is empty or unknown
+        let displayLocation = locationName;
+        if (!locationName || locationName.includes('Unknown')) {
+          if (location && location.latitude && location.longitude) {
+            displayLocation = `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`;
+          } else {
+            displayLocation = 'Unknown Location';
+          }
+        }
         analysisResult = {
           id: d.id?.toString() || Date.now().toString(),
           timestamp: d.created_at || new Date().toISOString(),
-          location: locationName,
+          location: displayLocation,
           coordinates: location,
           imageUri: d.cloudinary_url || image.uri,
           captureType: captureType,
@@ -244,10 +256,19 @@ export default function ImagesScreen() {
         usedMock = true;
         // Simulate backend response
         await new Promise(resolve => setTimeout(resolve, 3000));
+        // Use coordinates as fallback if locationName is empty or unknown
+        let displayLocation = locationName;
+        if (!locationName || locationName.includes('Unknown')) {
+          if (location && location.latitude && location.longitude) {
+            displayLocation = `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`;
+          } else {
+            displayLocation = 'Unknown Location';
+          }
+        }
         const mockAnalysis = {
           id: Date.now().toString(),
           timestamp: new Date().toISOString(),
-          location: locationName,
+          location: displayLocation,
           coordinates: location,
           imageUri: image.uri,
           captureType: captureType,
@@ -346,10 +367,6 @@ export default function ImagesScreen() {
   const renderAnalysisItem = ({ item, index }) => (
     <TouchableOpacity 
       style={[styles.analysisItem, index === 0 && styles.firstAnalysisItem]}
-      onPress={() => {
-        setSelectedAnalysis(item);
-        setShowAnalysisModal(true);
-      }}
       activeOpacity={0.7}
     >
       {/* Header with location and time */}
@@ -402,7 +419,7 @@ export default function ImagesScreen() {
         </View>
       </View>
       
-      {/* Footer with badges */}
+      {/* Footer with badges and See Analysis button */}
       <View style={styles.analysisFooter}>
         <View style={styles.badgeContainer}>
           <View style={[styles.captureTypeBadge, { backgroundColor: item.captureType === 'drone' ? colors.warning : colors.primary }]}>
@@ -420,8 +437,8 @@ export default function ImagesScreen() {
           </View>
         </View>
         
-        <TouchableOpacity style={styles.viewDetailsButton}>
-          <Text style={styles.viewDetailsText}>Details</Text>
+        <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({ pathname: '/screens/AnalysisDetailsScreen', params: { analysis: JSON.stringify(item) } })}>
+          <Text style={styles.viewDetailsText}>See Analysis</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -435,7 +452,7 @@ export default function ImagesScreen() {
       </View>
       <Text style={styles.emptyStateTitle}>No Analysis Yet</Text>
       <Text style={styles.emptyStateSubtitle}>
-        Capture your first image to start analyzing traffic conditions
+        Capture your first image to start analyzing traffic conditions. Your results will appear here!
       </Text>
       <TouchableOpacity 
         style={styles.emptyStateButton}
@@ -446,6 +463,10 @@ export default function ImagesScreen() {
       </TouchableOpacity>
     </View>
   );
+
+  // Separate real/user analysis from sample/mock
+  const userAnalysisResults = analysisResults.filter(r => !r.isSample);
+  const sampleAnalysisResults = analysisResults.filter(r => r.isSample);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -459,7 +480,7 @@ export default function ImagesScreen() {
       <View style={{alignItems: 'flex-end', marginHorizontal: 20, marginBottom: 5}}>
         <TouchableOpacity
           style={{backgroundColor: colors.primary, padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center'}}
-          onPress={() => router.push({ pathname: '/screens/RouteSetupScreen', params: { analysisResults } })}
+          onPress={() => router.push({ pathname: '/screens/RouteSetupScreen', params: { analysisResults: JSON.stringify(analysisResults) } })}
         >
           <Ionicons name="map" size={18} color={colors.white} style={{marginRight: 6}} />
           <Text style={{color: colors.white, fontWeight: 'bold'}}>View on Map</Text>
@@ -539,39 +560,45 @@ export default function ImagesScreen() {
         )}
       </View>
 
-      {/* Analysis Results ////////////////////////////////////////////////////////*/} 
+      {/* Analysis Results Section */}
       <View style={styles.resultsSection}>
         <View style={styles.resultsHeader}>
-          <Text style={styles.sectionTitle}>Recent Analysis</Text>
-          <Text style={styles.resultsCount}>{analysisResults.length} results</Text>
+          <Text style={styles.sectionTitle}>Your Recent Analysis</Text>
+          <Text style={styles.resultsCount}>{userAnalysisResults.length} results</Text>
         </View>
-        
-        <FlatList
-          data={analysisResults}
-          renderItem={renderAnalysisItem}
-          keyExtractor={item => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.resultsList}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+        <View style={{flex: 1, minHeight: 200}}>
+          <FlatList
+            data={userAnalysisResults}
+            renderItem={renderAnalysisItem}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={[styles.resultsList, {paddingTop: 8, paddingBottom: 32}]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            onEndReached={loadMoreResults}
+            onEndReachedThreshold={0.1}
+            ListEmptyComponent={renderEmptyState}
+          />
+        </View>
+        {/* Show sample analysis only if no user results */}
+        {userAnalysisResults.length === 0 && sampleAnalysisResults.length > 0 && (
+          <View style={{marginTop: 30}}>
+            <Text style={[styles.sectionTitle, {fontSize: 16, color: colors.textSecondary, marginBottom: 8}]}>Sample Analysis</Text>
+            <FlatList
+              data={sampleAnalysisResults}
+              renderItem={renderAnalysisItem}
+              keyExtractor={item => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.resultsList}
             />
-          }
-          onEndReached={loadMoreResults}
-          onEndReachedThreshold={0.1}
-          ListEmptyComponent={renderEmptyState}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.loadingMore}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.loadingMoreText}>Loading more...</Text>
-              </View>
-            ) : null
-          }
-        />
+          </View>
+        )}
       </View>
 
       {/* Capture Modal */}
@@ -615,93 +642,7 @@ export default function ImagesScreen() {
      
 
       {/* Analysis Details Modal */}
-      <Modal
-        visible={showAnalysisModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAnalysisModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.analysisModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Analysis Results</Text>
-              <TouchableOpacity onPress={() => setShowAnalysisModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            {selectedAnalysis && (
-              <ScrollView style={styles.analysisDetails} showsVerticalScrollIndicator={false}>
-                <View style={styles.analysisLocationInfo}>
-                  <Ionicons name="location" size={20} color={colors.primary} />
-                  <Text style={styles.analysisLocationName}>{selectedAnalysis.location}</Text>
-                </View>
-                
-                <Text style={styles.analysisTimestamp}>
-                  {new Date(selectedAnalysis.timestamp).toLocaleString()}
-                </Text>
-
-                <View style={styles.analysisGrid}>
-                  <View style={styles.analysisCard}>
-                    <Text style={styles.analysisCardTitle}>Traffic Level</Text>
-                    <Text style={[styles.analysisCardValue, { color: getTrafficLevelColor(selectedAnalysis.analysis.trafficLevel) }]}>
-                      {selectedAnalysis.analysis.trafficLevel}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.analysisCard}>
-                    <Text style={styles.analysisCardTitle}>Congestion Score</Text>
-                    <Text style={styles.analysisCardValue}>{selectedAnalysis.analysis.congestionScore}%</Text>
-                  </View>
-                  
-                  <View style={styles.analysisCard}>
-                    <Text style={styles.analysisCardTitle}>Road Condition</Text>
-                    <Ionicons name="navigate" size={16} color={getRoadConditionColor(selectedAnalysis.analysis.roadCondition)} style={{marginBottom: 4}} />
-                    <Text style={[styles.analysisCardValue, { color: getRoadConditionColor(selectedAnalysis.analysis.roadCondition) }]}>
-                      {selectedAnalysis.analysis.roadCondition}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.analysisCard}>
-                    <Text style={styles.analysisCardTitle}>Weather</Text>
-                    <Text style={styles.analysisCardValue}>{selectedAnalysis.analysis.weatherCondition}</Text>
-                  </View>
-                  
-                  <View style={styles.analysisCard}>
-                    <Text style={styles.analysisCardTitle}>Vehicles</Text>
-                    <Text style={styles.analysisCardValue}>{selectedAnalysis.analysis.vehicleCount}</Text>
-                  </View>
-                  
-                  <View style={styles.analysisCard}>
-                    <Text style={styles.analysisCardTitle}>Pedestrians</Text>
-                    <Text style={styles.analysisCardValue}>{selectedAnalysis.analysis.pedestrianCount}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.incidentsSection}>
-                  <Text style={styles.incidentsTitle}>Detected Incidents</Text>
-                  {selectedAnalysis.analysis.incidents.map((incident, index) => (
-                    <View key={index} style={styles.incidentItem}>
-                      <Ionicons name="warning" size={16} color={colors.warning} />
-                      <Text style={styles.incidentText}>{incident}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <View style={styles.recommendationsSection}>
-                  <Text style={styles.recommendationsTitle}>Recommendations</Text>
-                  {selectedAnalysis.analysis.recommendations.map((rec, index) => (
-                    <View key={index} style={styles.recommendationItem}>
-                      <Ionicons name="bulb" size={16} color={colors.primary} />
-                      <Text style={styles.recommendationText}>{rec}</Text>
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Removed as per edit hint */}
     </SafeAreaView>
   );
 }
@@ -840,7 +781,9 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0,
     elevation: 2,
-    height: 40
+    marginTop: 10, // Add space from capture section
+    minHeight: 200,
+    maxHeight: '60%', // Prevent overflow
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -855,6 +798,7 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     paddingBottom: 20,
+    paddingTop: 8,
   },
   analysisItem: {
     backgroundColor: colors.cardBackground,

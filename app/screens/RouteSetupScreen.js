@@ -13,7 +13,8 @@ import {
   Alert,
   Animated,
   FlatList,
-  ScrollView
+  ScrollView,
+  ToastAndroid
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -22,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import locationService from '../../services/locationService';
 import trafficService from '../../services/trafficService';
+import { useLocalSearchParams } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,6 +52,17 @@ const POPULAR_LOCATIONS = [
 ];
 
 export default function RouteSetupScreen() {
+  const params = useLocalSearchParams();
+  let analysisResults = [];
+  if (params.analysisResults) {
+    try {
+      analysisResults = typeof params.analysisResults === 'string'
+        ? JSON.parse(params.analysisResults)
+        : params.analysisResults;
+    } catch (e) {
+      analysisResults = [];
+    }
+  }
   const [modalVisible, setModalVisible] = useState(false);
   const [country, setCountry] = useState('Cameroon');
   const [startLocation, setStartLocation] = useState('');
@@ -125,6 +138,12 @@ export default function RouteSetupScreen() {
     { id: 'user5', latitude: 3.843000, longitude: 11.508000, timestamp: Date.now(), isTraffic: false },
     { id: 'user6', latitude: 3.851000, longitude: 11.509000, timestamp: Date.now(), isTraffic: false },
   ];
+
+  // Add state for highlighted users and alert modal
+  const [alertedUserIds, setAlertedUserIds] = useState([]);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertedUsers, setAlertedUsers] = useState([]);
+  const [alertMessage, setAlertMessage] = useState('');
 
   useEffect(() => {
     initializeMap();
@@ -636,6 +655,20 @@ export default function RouteSetupScreen() {
     return R * c;
   };
 
+  // Helper: calculate distance between two points in meters
+  const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const centerOnUserLocation = () => {
     if (userLocation) {
       const newRegion = {
@@ -781,6 +814,56 @@ export default function RouteSetupScreen() {
     }
   };
 
+  // Add effect to check for severe congestion and alert nearby users
+  useEffect(() => {
+    // Assume analysisResults are passed as a param (expo-router)
+    // Severe markers: trafficLevel === 'SEVERE'
+    // For demo, use static/mock analysis markers if needed
+    let severeMarkers = [];
+    if (typeof analysisResults !== 'undefined' && Array.isArray(analysisResults)) {
+      severeMarkers = analysisResults.filter(r => (r.analysis?.trafficLevel || '').toUpperCase() === 'SEVERE');
+    }
+    // For demo, you can add static severe markers here if needed
+
+    if (severeMarkers.length > 0 && backendUsers.length > 0) {
+      const alerted = [];
+      backendUsers.forEach(user => {
+        severeMarkers.forEach(marker => {
+          const dist = getDistanceMeters(user.latitude, user.longitude, marker.coordinates.latitude, marker.coordinates.longitude);
+          if (dist < 1000) { // 1km radius
+            alerted.push(user.id);
+          }
+        });
+      });
+      if (alerted.length > 0) {
+        setAlertedUserIds(alerted);
+        setAlertedUsers(backendUsers.filter(u => alerted.includes(u.id)));
+        setAlertMessage('Severe congestion nearby!');
+        setShowAlertModal(true);
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Severe congestion detected near some users!', ToastAndroid.LONG);
+        }
+      }
+    }
+  }, [backendUsers, analysisResults]);
+
+  // Helper to generate random points around a center (lat, lng)
+  function generateVehiclePositions(center, count, radiusMeters = 30) {
+    const points = [];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = Math.random() * radiusMeters;
+      // Convert meters to degrees
+      const dx = (distance * Math.cos(angle)) / 111320;
+      const dy = (distance * Math.sin(angle)) / 111320;
+      points.push({
+        latitude: center.latitude + dy,
+        longitude: center.longitude + dx,
+      });
+    }
+    return points;
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -895,20 +978,55 @@ export default function RouteSetupScreen() {
           </Marker>
         )}
 
-        {/* Backend users as dots */}
+        {/* Backend users as dots, highlight if alerted */}
         {backendUsers.map((user) => (
-          <Marker 
-            key={user.id} 
-            coordinate={{ 
-              latitude: user.latitude, 
-              longitude: user.longitude 
+          <Marker
+            key={user.id}
+            coordinate={{
+              latitude: user.latitude,
+              longitude: user.longitude
             }}
             title={user.isTraffic ? `Traffic Location ${user.id}` : `User ${user.id}`}
             description={`Last updated: ${new Date(user.timestamp).toLocaleTimeString()}`}
           >
-            <View style={user.isTraffic ? styles.trafficDot : styles.userDot} />
+            <View style={{alignItems: 'center', justifyContent: 'center'}}>
+              {alertedUserIds.includes(user.id) && (
+                <View style={styles.alertPulse} />
+              )}
+              <View style={user.isTraffic ? styles.trafficDot : styles.userDot} />
+            </View>
           </Marker>
         ))}
+
+        {/* Analysis markers and vehicle dots */}
+        {Array.isArray(analysisResults) && analysisResults.map((result, idx) => {
+          // Main analysis marker
+          const coord = result.coordinates || {};
+          const vehicleCount = result.analysis?.vehicleCount || result.analysis?.total_vehicles || 0;
+          // Vehicle dots
+          const vehiclePositions = generateVehiclePositions(coord, vehicleCount);
+          return [
+            <Marker
+              key={`analysis-marker-${result.id}`}
+              coordinate={coord}
+              title={result.location || 'Analysis Location'}
+              description={`Traffic: ${result.analysis?.trafficLevel || ''} | Vehicles: ${vehicleCount}`}
+            >
+              <View style={{alignItems:'center', justifyContent:'center'}}>
+                <Ionicons name="car" size={20} color={colors.primary} />
+              </View>
+            </Marker>,
+            ...vehiclePositions.map((pos, i) => (
+              <Marker
+                key={`vehicle-dot-${result.id}-${i}`}
+                coordinate={pos}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={{width:8, height:8, borderRadius:4, backgroundColor:'#333', borderWidth:1, borderColor:'#fff'}} />
+              </Marker>
+            ))
+          ];
+        })}
 
         {/* Route markers */}
         {startCoords && (
@@ -1140,6 +1258,27 @@ export default function RouteSetupScreen() {
               <Text style={styles.searchButtonText}>
                 {endLocation ? 'Find Route' : 'Select Destination'}
               </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Alert Modal for demo */}
+      <Modal
+        visible={showAlertModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAlertModal(false)}
+      >
+        <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'rgba(0,0,0,0.3)'}}>
+          <View style={{backgroundColor:colors.white, borderRadius:16, padding:24, alignItems:'center', maxWidth:300}}>
+            <Ionicons name="alert" size={36} color={colors.danger} style={{marginBottom:12}} />
+            <Text style={{fontWeight:'bold', fontSize:18, color:colors.danger, marginBottom:8}}>{alertMessage}</Text>
+            <Text style={{fontSize:14, color:colors.textPrimary, marginBottom:12}}>
+              {alertedUsers.length} user(s) are within 1km of a severe congestion area.
+            </Text>
+            <TouchableOpacity style={{backgroundColor:colors.primary, borderRadius:8, paddingHorizontal:20, paddingVertical:10}} onPress={()=>setShowAlertModal(false)}>
+              <Text style={{color:colors.white, fontWeight:'bold'}}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1564,5 +1703,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: colors.primary,
+  },
+  alertPulse: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.danger,
+    opacity: 0.25,
+    zIndex: 1,
   },
 });
