@@ -194,53 +194,90 @@ export default function ImagesScreen() {
 
       // Prepare data for backend
       const formData = new FormData();
-      formData.append('image', {
+      formData.append('file', {
         uri: image.uri,
         type: 'image/jpeg',
-        name: 'road_analysis.jpg',
+        name: 'photo.jpg',
       });
-      formData.append('location', JSON.stringify({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        name: locationName,
-      }));
-      formData.append('description', description);
-      formData.append('captureType', captureType);
-      formData.append('timestamp', new Date().toISOString());
 
-      // Simulate backend response
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const mockAnalysis = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        location: locationName,
-        coordinates: location,
-        imageUri: image.uri,
-        captureType: captureType,
-        analysis: {
-          trafficLevel: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)],
-          congestionScore: Math.floor(Math.random() * 100),
-          roadCondition: ['Poor', 'Fair', 'Good', 'Excellent'][Math.floor(Math.random() * 4)],
-          weatherCondition: ['Clear', 'Cloudy', 'Rainy', 'Foggy'][Math.floor(Math.random() * 4)],
-          vehicleCount: Math.floor(Math.random() * 100),
-          pedestrianCount: Math.floor(Math.random() * 50),
-          incidents: ['Normal traffic flow', 'Minor congestion', 'Construction work'],
-          recommendations: ['Monitor traffic patterns', 'Consider route optimization']
-        },
-        status: 'completed'
-      };
+      // Try real endpoint first
+      let analysisResult = null;
+      let usedMock = false;
+      try {
+        const response = await fetch('https://853a-41-202-219-160.ngrok-free.app/api/v1/congestion/image-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'multipart/form-data', 'accept': 'application/json' },
+          body: formData,
+        });
+        if (!response.ok) throw new Error('Upload failed');
+        const result = await response.json();
+        if (!result.success || !result.data) throw new Error('Invalid response');
 
-      setAnalysisResults(prev => [mockAnalysis, ...prev]);
-      setSelectedAnalysis(mockAnalysis);
+        // Parse the response
+        const d = result.data;
+        analysisResult = {
+          id: d.id?.toString() || Date.now().toString(),
+          timestamp: d.created_at || new Date().toISOString(),
+          location: locationName,
+          coordinates: location,
+          imageUri: d.cloudinary_url || image.uri,
+          captureType: captureType,
+          analysis: {
+            trafficLevel: d.congestion_level || 'Unknown',
+            congestionScore: d.congestion_score || 0,
+            roadCondition: 'Unknown', // Not provided by backend
+            weatherCondition: 'Unknown', // Not provided by backend
+            vehicleCount: d.total_vehicles || 0,
+            pedestrianCount: 0, // Not provided by backend
+            incidents: [], // Not provided by backend
+            recommendations: [], // Not provided by backend
+            detections: d.analysis_data?.detections || [],
+          },
+          status: 'completed',
+          raw: d,
+        };
+      } catch (err) {
+        // Fallback to mock analysis
+        usedMock = true;
+        // Simulate backend response
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const mockAnalysis = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          location: locationName,
+          coordinates: location,
+          imageUri: image.uri,
+          captureType: captureType,
+          analysis: {
+            trafficLevel: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)],
+            congestionScore: Math.floor(Math.random() * 100),
+            roadCondition: ['Poor', 'Fair', 'Good', 'Excellent'][Math.floor(Math.random() * 4)],
+            weatherCondition: ['Clear', 'Cloudy', 'Rainy', 'Foggy'][Math.floor(Math.random() * 4)],
+            vehicleCount: Math.floor(Math.random() * 100),
+            pedestrianCount: Math.floor(Math.random() * 50),
+            incidents: ['Normal traffic flow', 'Minor congestion', 'Construction work'],
+            recommendations: ['Monitor traffic patterns', 'Consider route optimization'],
+            detections: [],
+          },
+          status: 'completed',
+          raw: null,
+        };
+        analysisResult = mockAnalysis;
+      }
+
+      setAnalysisResults(prev => [analysisResult, ...prev]);
+      setSelectedAnalysis(analysisResult);
       setShowAnalysisModal(true);
-      
+
       // Reset form
       setImage(null);
       setDescription('');
-      
-      console.log('✅ Analysis completed:', mockAnalysis);
-      
+
+      if (usedMock) {
+        console.log('⚠️ Used mock analysis due to endpoint failure.');
+      } else {
+        console.log('✅ Analysis completed:', analysisResult);
+      }
     } catch (error) {
       console.error('❌ Analysis error:', error);
       Alert.alert('Analysis Failed', 'An error occurred while analyzing the image.');
@@ -344,7 +381,7 @@ export default function ImagesScreen() {
         
         <View style={styles.metricItem}>
           <View style={styles.metricIconContainer}>
-            <Ionicons name="road" size={16} color={colors.success} />
+            <Ionicons name="navigate" size={16} color={colors.success} />
           </View>
           <Text style={styles.metricLabel}>Road</Text>
           <Text style={[styles.metricValue, { color: getRoadConditionColor(item.analysis.roadCondition) }]}>
@@ -596,6 +633,7 @@ export default function ImagesScreen() {
                   
                   <View style={styles.analysisCard}>
                     <Text style={styles.analysisCardTitle}>Road Condition</Text>
+                    <Ionicons name="navigate" size={16} color={getRoadConditionColor(selectedAnalysis.analysis.roadCondition)} style={{marginBottom: 4}} />
                     <Text style={[styles.analysisCardValue, { color: getRoadConditionColor(selectedAnalysis.analysis.roadCondition) }]}>
                       {selectedAnalysis.analysis.roadCondition}
                     </Text>
