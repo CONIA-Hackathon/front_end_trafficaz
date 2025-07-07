@@ -34,7 +34,7 @@ const SAMPLE_ANALYSIS_RESULTS = [
     timestamp: new Date().toISOString(),
     location: 'Yaoundé Central Market',
     coordinates: { latitude: 3.848033, longitude: 11.502075 },
-    imageUri: null,
+    imageUri: 'https://placehold.co/120x80?text=Sample',
     captureType: 'cctv',
     analysis: {
       trafficLevel: 'High',
@@ -54,7 +54,7 @@ const SAMPLE_ANALYSIS_RESULTS = [
     timestamp: new Date(Date.now() - 3600000).toISOString(),
     location: 'Douala Port Road',
     coordinates: { latitude: 4.0511, longitude: 9.7679 },
-    imageUri: null,
+    imageUri: 'https://placehold.co/120x80?text=Sample',
     captureType: 'drone',
     analysis: {
       trafficLevel: 'Medium',
@@ -74,7 +74,7 @@ const SAMPLE_ANALYSIS_RESULTS = [
     timestamp: new Date(Date.now() - 7200000).toISOString(),
     location: 'Bamenda Main Street',
     coordinates: { latitude: 5.9597, longitude: 10.1459 },
-    imageUri: null,
+    imageUri: 'https://placehold.co/120x80?text=Sample',
     captureType: 'cctv',
     analysis: {
       trafficLevel: 'Low',
@@ -369,6 +369,16 @@ export default function ImagesScreen() {
       style={[styles.analysisItem, index === 0 && styles.firstAnalysisItem]}
       activeOpacity={0.7}
     >
+      {/* Image thumbnail */}
+      <View style={styles.analysisImageThumbContainer}>
+        {item.imageUri ? (
+          <Image source={{ uri: item.imageUri }} style={styles.analysisImageThumb} resizeMode="cover" />
+        ) : (
+          <View style={[styles.analysisImageThumb, {justifyContent:'center',alignItems:'center',backgroundColor:colors.background}]}> 
+            <Ionicons name="image" size={32} color={colors.textSecondary} />
+          </View>
+        )}
+      </View>
       {/* Header with location and time */}
       <View style={styles.analysisHeader}>
         <View style={styles.analysisLocation}>
@@ -812,6 +822,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   firstAnalysisItem: {
     borderColor: colors.primary,
@@ -1113,5 +1125,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
     marginLeft: 8,
+  },
+  analysisImageThumbContainer: {
+    marginRight: 16,
+  },
+  analysisImageThumb: {
+    width: 64,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.background,
   },
 });
