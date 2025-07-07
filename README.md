@@ -175,7 +175,7 @@ TrafficAZ/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/trafficaz-frontend.git
+   git clone https://github.com/CONIA-Hackathon/front_end_trafficaz.git
    cd trafficaz-frontend
    ```
 
@@ -467,9 +467,9 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- **Email**: support@trafficaz.com
-- **Documentation**: [docs.trafficaz.com](https://docs.trafficaz.com)
-- **Issues**: [GitHub Issues](https://github.com/your-username/trafficaz-frontend/issues)
+- **Email**: trafficaz@gmail.com
+- **Documentation**: [docs.trafficaz.com](https://github.com/CONIA-Hackathon/front_end_trafficaz)
+- **Issues**: [GitHub Issues](https://github.com/CONIA-Hackathon/front_end_trafficaz/issues)
 - **Discord**: [TrafficAZ Community](https://discord.gg/trafficaz)
 
 ---
