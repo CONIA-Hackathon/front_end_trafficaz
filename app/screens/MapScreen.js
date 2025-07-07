@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import locationService from '../../services/locationService';
 import * as Location from 'expo-location';
+import { useRoute } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,6 +37,9 @@ const MapScreen = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [fieldFocus, setFieldFocus] = useState(null);
   const mapRef = useRef(null);
+
+  const route = useRoute();
+  const analysisResults = route.params?.analysisResults || [];
 
   const trafficMarkers = [
     {
@@ -231,6 +235,43 @@ const MapScreen = () => {
           </Marker>
         )}
 
+        {/* Render analysis results as markers */}
+        {analysisResults.map((result) => (
+          <Marker
+            key={result.id}
+            coordinate={{
+              latitude: result.coordinates.latitude,
+              longitude: result.coordinates.longitude,
+            }}
+            pinColor={
+              result.analysis.trafficLevel === 'SEVERE' ? 'red' :
+              result.analysis.trafficLevel === 'NO_TRAFFIC' ? 'orange' :
+              result.analysis.trafficLevel === 'MEDIUM' ? 'yellow' :
+              'green'
+            }
+          >
+            <View style={[styles.trafficMarker, {
+              backgroundColor:
+                result.analysis.trafficLevel === 'SEVERE' ? colors.danger :
+                result.analysis.trafficLevel === 'NO_TRAFFIC' ? colors.warning :
+                result.analysis.trafficLevel === 'MEDIUM' ? colors.info :
+                colors.success
+            }]}
+            >
+              <Ionicons name="car" size={16} color={colors.white} />
+            </View>
+            <MapView.Callout>
+              <View style={{minWidth: 120}}>
+                <Text style={{fontWeight: 'bold'}}>Congestion: {result.analysis.trafficLevel}</Text>
+                <Text>Vehicles: {result.analysis.vehicleCount}</Text>
+                <Text>Time: {new Date(result.timestamp).toLocaleTimeString()}</Text>
+                {result.location && <Text>Location: {result.location}</Text>}
+              </View>
+            </MapView.Callout>
+          </Marker>
+        ))}
+
+        {/* Existing static traffic markers (optional, can remove) */}
         {trafficMarkers.map((marker) => (
           <Marker
             key={marker.id}

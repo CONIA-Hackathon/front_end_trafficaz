@@ -21,6 +21,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import roadAnalysisService from '../../services/roadAnalysisService';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -99,6 +100,7 @@ export default function ImagesScreen() {
   const [captureType, setCaptureType] = useState('cctv');
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const navigation = useNavigation();
 
   useEffect(() => {
     getCurrentLocation();
@@ -313,11 +315,20 @@ export default function ImagesScreen() {
   };
 
   const getTrafficLevelColor = (level) => {
-    switch (level.toLowerCase()) {
-      case 'low': return colors.success;
-      case 'medium': return colors.warning;
-      case 'high': return colors.danger;
-      default: return colors.textSecondary;
+    if (!level) return colors.textSecondary;
+    switch (level.toUpperCase()) {
+      case 'NO_TRAFFIC':
+        return colors.success; // Green
+      case 'LIGHT':
+        return '#4FC3F7'; // Light Blue
+      case 'MODERATE':
+        return colors.warning; // Orange/Yellow
+      case 'HEAVY':
+        return '#6A1B9A'; // Red
+      case 'SEVERE':
+        return colors.danger; // Deep Purple
+      default:
+        return colors.textSecondary;
     }
   };
 
@@ -441,6 +452,17 @@ export default function ImagesScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Road Analysis</Text>
         <Text style={styles.headerSubtitle}>CCTV & Drone Image Analysis</Text>
+      </View>
+
+      {/* Add View on Map Button */}
+      <View style={{alignItems: 'flex-end', marginHorizontal: 20, marginBottom: 5}}>
+        <TouchableOpacity
+          style={{backgroundColor: colors.primary, padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center'}}
+          onPress={() => navigation.navigate('RouteSetup', { analysisResults })}
+        >
+          <Ionicons name="map" size={18} color={colors.white} style={{marginRight: 6}} />
+          <Text style={{color: colors.white, fontWeight: 'bold'}}>View on Map</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Capture Section */}
