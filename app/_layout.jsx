@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../context/AuthContext';
 import { LanguageProvider } from '../context/LanguageContext';
+import { AlertProvider } from '../context/AlertContext';
 import BottomNav from '../components/BottomNav';
 import colors from '../constants/colors';
 
@@ -45,26 +46,28 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <View style={styles.container}>
-            <StatusBar 
-              backgroundColor={colors.primary}
-              barStyle="light-content"
-              translucent={false}
-            />
-            <Stack 
-              screenOptions={{ 
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.background }
-              }}
-            >
-              {/* Let expo-router handle the routing automatically */}
-            </Stack>
-            {showBottomNav && <BottomNav />}
-          </View>
-        </AuthProvider>
-      </LanguageProvider>
+      <AlertProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <View style={styles.container}>
+              <StatusBar 
+                backgroundColor={colors.primary}
+                barStyle="light-content"
+                translucent={false}
+              />
+              <Stack 
+                screenOptions={{ 
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.background }
+                }}
+              >
+                {/* Let expo-router handle the routing automatically */}
+              </Stack>
+              {showBottomNav && <BottomNav />}
+            </View>
+          </AuthProvider>
+        </LanguageProvider>
+      </AlertProvider>
     </SafeAreaProvider>
   );
 }

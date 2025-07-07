@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import colors from '../../constants/colors';
+import { AlertContext } from '../../context/AlertContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -81,6 +82,35 @@ const AlertScreen = () => {
       location: 'Business District'
     }
   ];
+
+  const sponsors = [
+    {
+      name: 'Eventify',
+      message: 'This alert was sponsored by Eventify. Eventify is a platform for discovering and promoting local events. Learn more at eventify.com.',
+      extra: 'Eventify helps you discover and promote local events.',
+      color: colors.primary,
+      icon: 'megaphone',
+      url: 'https://eventify.com',
+    },
+    {
+      name: 'YooMee',
+      message: 'This alert was sponsored by YooMee. YooMee offers fast, reliable internet and digital services for Cameroon. Visit yoomee.cm.',
+      extra: 'YooMee brings you affordable, high-speed internet and digital solutions.',
+      color: '#E53935',
+      icon: 'wifi',
+      url: 'https://yoomee.cm',
+    },
+    {
+      name: 'Huawei',
+      message: 'This alert was sponsored by Huawei. Huawei powers smart cities and next-gen connectivity across Africa. Discover more at huawei.com.',
+      extra: 'Huawei enables smart, connected communities and innovation.',
+      color: '#1A237E',
+      icon: 'hardware-chip',
+      url: 'https://huawei.com',
+    },
+  ];
+
+  const { alerts } = useContext(AlertContext);
 
   useEffect(() => {
     loadNotifications();
@@ -274,6 +304,28 @@ const AlertScreen = () => {
     );
   }
 
+  // Merge context alerts and mockNotifications, newest first
+  let allAlerts = [...alerts, ...mockNotifications.filter(m => !alerts.some(a => a.id === m.id))];
+  // Insert sponsored message every 3rd alert, rotating sponsors
+  let alertsWithSponsors = [];
+  allAlerts.forEach((alert, i) => {
+    alertsWithSponsors.push(alert);
+    if ((i + 1) % 3 === 0) {
+      const sponsor = sponsors[((i + 1) / 3 - 1) % sponsors.length];
+      alertsWithSponsors.push({
+        id: `sponsored-${i}`,
+        notificationType: 'sponsored',
+        message: sponsor.message,
+        sentAt: new Date().toISOString(),
+        status: 'info',
+        priority: 'low',
+        location: '',
+        sponsored: true,
+        sponsor,
+      });
+    }
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -300,13 +352,13 @@ const AlertScreen = () => {
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Ionicons name="notifications" size={20} color={colors.primary} />
-          <Text style={styles.statNumber}>{notifications.length}</Text>
+          <Text style={styles.statNumber}>{alertsWithSponsors.length}</Text>
           <Text style={styles.statLabel}>Total Alerts</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="alert-circle" size={20} color={colors.danger} />
           <Text style={styles.statNumber}>
-            {notifications.filter(n => n.priority === 'high').length}
+            {alertsWithSponsors.filter(n => n.priority === 'high').length}
           </Text>
           <Text style={styles.statLabel}>High Priority</Text>
         </View>
@@ -325,7 +377,7 @@ const AlertScreen = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {notifications.length === 0 ? (
+        {alertsWithSponsors.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="notifications-off" size={64} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>No Alerts</Text>
@@ -335,43 +387,57 @@ const AlertScreen = () => {
           </View>
         ) : (
           <View style={styles.alertsList}>
-            {notifications.map((notification) => (
-              <View key={notification.id} style={styles.alertCard}>
-                {/* Alert Header */}
-                <View style={styles.alertHeader}>
-                  <View style={styles.alertInfo}>
-                    <View style={styles.alertTypeContainer}>
-                      <Ionicons 
-                        name={getPriorityIcon(notification.priority)} 
-                        size={16} 
-                        color={getPriorityColor(notification.priority)} 
-                      />
-                      <Text style={styles.alertType}>
-                        {getNotificationTypeLabel(notification.notificationType)}
+            {alertsWithSponsors.map((notification) => (
+              <View key={notification.id} style={[styles.alertCard, notification.sponsored && { borderColor: notification.sponsor?.color, borderWidth: 2, backgroundColor: '#F8F9FA' }]}> 
+                {/* Sponsored Alert Header */}
+                {notification.sponsored ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <Ionicons name={notification.sponsor.icon} size={20} color={notification.sponsor.color} style={{ marginRight: 8 }} accessibilityLabel={`Sponsor: ${notification.sponsor.name}`}/>
+                    <Text style={{ fontWeight: 'bold', color: notification.sponsor.color, fontSize: 16 }} accessibilityLabel={`Sponsored by ${notification.sponsor.name}`}>{notification.sponsor.name}</Text>
+                    <View style={{ backgroundColor: notification.sponsor.color, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 10 }}>
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>Sponsored</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.alertHeader}>
+                    <View style={styles.alertInfo}>
+                      <View style={styles.alertTypeContainer}>
+                        <Ionicons 
+                          name={getPriorityIcon(notification.priority)} 
+                          size={16} 
+                          color={getPriorityColor(notification.priority)} 
+                        />
+                        <Text style={styles.alertType}>
+                          {getNotificationTypeLabel(notification.notificationType)}
+                        </Text>
+                      </View>
+                      <Text style={styles.alertTime}>
+                        {formatTime(notification.sentAt)}
                       </Text>
                     </View>
-                    <Text style={styles.alertTime}>
-                      {formatTime(notification.sentAt)}
-                    </Text>
+                    <View style={styles.priorityBadge}>
+                      <Text style={[
+                        styles.priorityText, 
+                        { color: getPriorityColor(notification.priority) }
+                      ]}>
+                        {notification.priority.toUpperCase()}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.priorityBadge}>
-                    <Text style={[
-                      styles.priorityText, 
-                      { color: getPriorityColor(notification.priority) }
-                    ]}>
-                      {notification.priority.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Alert Message */}
+                )}
+                {/* Alert Message or Sponsored Content */}
                 <View style={styles.alertMessage}>
-                  <Text style={styles.messageText}>{notification.message}</Text>
-                  <Text style={styles.locationText}>
-                    📍 {notification.location}
-                  </Text>
+                  {notification.sponsored ? (
+                    <Text style={{ fontSize: 15, color: colors.textPrimary, marginBottom: 4 }} accessibilityLabel={`Ad: ${notification.sponsor.message}`}>{notification.sponsor.message}</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.messageText}>{notification.message}</Text>
+                      <Text style={styles.locationText}>
+                        📍 {notification.location}
+                      </Text>
+                    </>
+                  )}
                 </View>
-
                 {/* Alert Actions */}
                 <View style={styles.alertActions}>
                   <TouchableOpacity 
@@ -379,7 +445,8 @@ const AlertScreen = () => {
                       styles.actionButton,
                       speaking && currentSpeakingId === notification.id && styles.actionButtonActive
                     ]}
-                    onPress={() => speakNotification(notification)}
+                    onPress={() => speakNotification(notification.sponsored ? { ...notification, message: notification.sponsor.message } : notification)}
+                    accessibilityLabel={notification.sponsored ? `Listen to sponsored message from ${notification.sponsor.name}` : 'Listen to alert'}
                   >
                     <Ionicons 
                       name={speaking && currentSpeakingId === notification.id ? "stop" : "volume-high"} 
@@ -393,30 +460,26 @@ const AlertScreen = () => {
                       {speaking && currentSpeakingId === notification.id ? 'Stop' : 'Listen'}
                     </Text>
                   </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {
-                      // Navigate to map screen
-                      //get start and stop location then open it in the map section
-                      //also request cars around that start and stop location
-                      router.push('/Map');
-                    }}
-                  >
-                    <Ionicons name="map" size={16} color={colors.info} />
-                    <Text style={styles.actionButtonText}>View Map</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {
-                      // TODO: Share alert
-                      Alert.alert('Share Alert', 'Share this traffic alert with others.');
-                    }}
-                  >
-                    <Ionicons name="share" size={16} color={colors.secondary} />
-                    <Text style={styles.actionButtonText}>Share</Text>
-                  </TouchableOpacity>
+                  {!notification.sponsored && (
+                    <>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={() => router.push('/Map')}
+                        accessibilityLabel="View alert location on map"
+                      >
+                        <Ionicons name="map" size={16} color={colors.info} />
+                        <Text style={styles.actionButtonText}>View Map</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={() => Alert.alert('Share Alert', 'Share this traffic alert with others.')}
+                        accessibilityLabel="Share this alert"
+                      >
+                        <Ionicons name="share" size={16} color={colors.secondary} />
+                        <Text style={styles.actionButtonText}>Share</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               </View>
             ))}

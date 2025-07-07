@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import colors from '../../constants/colors';
 import roadAnalysisService from '../../services/roadAnalysisService';
 import { useRouter } from 'expo-router';
 import { API_BASE_URL } from '../../constants/config';
+import { AlertContext } from '../../context/AlertContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -106,10 +107,35 @@ export default function ImagesScreen() {
   const [captureType, setCaptureType] = useState('cctv');
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const { alerts, setAlerts } = useContext(AlertContext);
 
   useEffect(() => {
     getCurrentLocation();
   }, []);
+
+  useEffect(() => {
+    if (analysisResults.length > 0) {
+      const latest = analysisResults[0];
+      if (!latest.isSample && !alerts.some(a => a.id === latest.id)) {
+        setAlerts(prev => [
+          {
+            id: latest.id,
+            notificationType: 'analysis_alert',
+            message: `Traffic analysis at ${latest.location}: ${latest.analysis.trafficLevel} traffic, ${latest.analysis.vehicleCount} vehicles.`,
+            sentAt: latest.timestamp,
+            status: 'delivered',
+            priority: latest.analysis.trafficLevel && latest.analysis.trafficLevel.toLowerCase() === 'severe' ? 'high' : 'medium',
+            location: latest.location,
+            imageUri: latest.imageUri,
+            analysis: latest.analysis,
+          },
+          ...prev
+        ]);
+        Alert.alert('New Traffic Alert', `Traffic analysis at ${latest.location}: ${latest.analysis.trafficLevel} traffic, ${latest.analysis.vehicleCount} vehicles.`);
+      }
+    }
+    // eslint-disable-next-line
+  }, [analysisResults]);
 
   const getCurrentLocation = async () => {
     try {
