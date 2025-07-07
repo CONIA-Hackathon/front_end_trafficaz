@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import colors from '../../constants/colors';
 import roadAnalysisService from '../../services/roadAnalysisService';
 import { useRouter } from 'expo-router';
+import { API_BASE_URL } from '../../constants/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -210,7 +211,7 @@ export default function ImagesScreen() {
       let analysisResult = null;
       let usedMock = false;
       try {
-        const response = await fetch('https://853a-41-202-219-160.ngrok-free.app/api/v1/congestion/image-upload', {
+        const response = await fetch(`${API_BASE_URL}/congestion/image-upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'multipart/form-data', 'accept': 'application/json' },
           body: formData,
@@ -365,94 +366,52 @@ export default function ImagesScreen() {
   };
 
   const renderAnalysisItem = ({ item, index }) => (
-    <TouchableOpacity 
-      style={[styles.analysisItem, index === 0 && styles.firstAnalysisItem]}
-      activeOpacity={0.7}
-    >
-      {/* Image thumbnail */}
-      <View style={styles.analysisImageThumbContainer}>
-        {item.imageUri ? (
-          <Image source={{ uri: item.imageUri }} style={styles.analysisImageThumb} resizeMode="cover" />
-        ) : (
-          <View style={[styles.analysisImageThumb, {justifyContent:'center',alignItems:'center',backgroundColor:colors.background}]}> 
-            <Ionicons name="image" size={32} color={colors.textSecondary} />
-          </View>
-        )}
-      </View>
-      {/* Header with location and time */}
-      <View style={styles.analysisHeader}>
-        <View style={styles.analysisLocation}>
-          <View style={styles.locationIconContainer}>
-            <Ionicons name="location" size={16} color={colors.white} />
-          </View>
-          <Text style={styles.analysisLocationText} numberOfLines={1}>
-            {item.location}
-          </Text>
+    <View style={[styles.analysisItem, index === 0 && styles.firstAnalysisItem]}> 
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
+        {/* Image top left */}
+        <View style={styles.analysisImageThumbContainer}>
+          {item.imageUri ? (
+            <Image source={{ uri: item.imageUri }} style={styles.analysisImageThumb} resizeMode="cover" />
+          ) : (
+            <View style={[styles.analysisImageThumb, {justifyContent:'center',alignItems:'center',backgroundColor:colors.background}]}> 
+              <Ionicons name="image" size={32} color={colors.textSecondary} />
+            </View>
+          )}
         </View>
-        <View style={styles.timeContainer}>
-          <Text style={styles.analysisTime}>{formatTimeAgo(item.timestamp)}</Text>
+        {/* Location top right */}
+        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginLeft: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.analysisLocationText} numberOfLines={1}>{item.location}</Text>
+            <Text style={styles.analysisTime}>{formatTimeAgo(item.timestamp)}</Text>
+          </View>
         </View>
       </View>
-      
-      {/* Main metrics */}
-      <View style={styles.analysisMetrics}>
+      {/* Info below */}
+      <View style={styles.analysisMetricsRow}> 
         <View style={styles.metricItem}>
-          <View style={styles.metricIconContainer}>
-            <Ionicons name="car" size={16} color={colors.primary} />
-          </View>
+          <Ionicons name="car" size={16} color={colors.primary} style={{marginBottom:2}} />
           <Text style={styles.metricLabel}>Traffic</Text>
-          <Text style={[styles.metricValue, { color: getTrafficLevelColor(item.analysis.trafficLevel) }]}>
-            {item.analysis.trafficLevel}
-          </Text>
+          <Text style={[styles.metricValue, { color: getTrafficLevelColor(item.analysis.trafficLevel) }]}>{item.analysis.trafficLevel}</Text>
         </View>
-        
-        <View style={styles.metricDivider} />
-        
         <View style={styles.metricItem}>
-          <View style={styles.metricIconContainer}>
-            <Ionicons name="trending-up" size={16} color={colors.warning} />
-          </View>
+          <Ionicons name="trending-up" size={16} color={colors.warning} style={{marginBottom:2}} />
           <Text style={styles.metricLabel}>Congestion</Text>
           <Text style={styles.metricValue}>{item.analysis.congestionScore}%</Text>
         </View>
-        
-        <View style={styles.metricDivider} />
-        
         <View style={styles.metricItem}>
-          <View style={styles.metricIconContainer}>
-            <Ionicons name="navigate" size={16} color={colors.success} />
-          </View>
+          <Ionicons name="navigate" size={16} color={colors.success} style={{marginBottom:2}} />
           <Text style={styles.metricLabel}>Road</Text>
-          <Text style={[styles.metricValue, { color: getRoadConditionColor(item.analysis.roadCondition) }]}>
-            {item.analysis.roadCondition}
-          </Text>
+          <Text style={[styles.metricValue, { color: getRoadConditionColor(item.analysis.roadCondition) }]}>{item.analysis.roadCondition}</Text>
         </View>
       </View>
-      
-      {/* Footer with badges and See Analysis button */}
-      <View style={styles.analysisFooter}>
-        <View style={styles.badgeContainer}>
-          <View style={[styles.captureTypeBadge, { backgroundColor: item.captureType === 'drone' ? colors.warning : colors.primary }]}>
-            <Ionicons 
-              name={item.captureType === 'drone' ? 'airplane' : 'videocam'} 
-              size={12} 
-              color={colors.white} 
-            />
-            <Text style={styles.captureTypeText}>{item.captureType.toUpperCase()}</Text>
-          </View>
-          
-          <View style={[styles.statusBadge, { backgroundColor: colors.success }]}>
-            <Ionicons name="checkmark-circle" size={12} color={colors.white} />
-            <Text style={styles.statusText}>Completed</Text>
-          </View>
-        </View>
-        
+      {/* CTA at bottom right */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 }}>
         <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({ pathname: '/screens/AnalysisDetailsScreen', params: { analysis: JSON.stringify(item) } })}>
           <Text style={styles.viewDetailsText}>See Analysis</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.primary} />
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   const renderEmptyState = () => (
@@ -813,8 +772,8 @@ const styles = StyleSheet.create({
   analysisItem: {
     backgroundColor: colors.cardBackground,
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
+    padding: 18,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: '#000',
@@ -822,8 +781,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: 'column', // column layout for new card
+    alignItems: 'stretch',
   },
   firstAnalysisItem: {
     borderColor: colors.primary,
@@ -1134,5 +1093,13 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 8,
     backgroundColor: colors.background,
+  },
+  analysisMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 2,
+    gap: 8,
   },
 });
